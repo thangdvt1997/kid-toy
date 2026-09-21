@@ -221,3 +221,7 @@ None beyond what the plan's own `<threat_model>` already covers (T-01-07 through
 ---
 *Phase: 01-foundation-auth-bilingual-catalog-pricing*
 *Completed: 2026-09-21*
+
+## Self-Check: PASSED
+
+All 13 claimed created files verified present on disk (plus this SUMMARY.md itself); all 5 commits (`bd5e402`, `56c471d`, `6a3d517`, `ddfc36d`, `6f23db3`) verified present in `git log`.
