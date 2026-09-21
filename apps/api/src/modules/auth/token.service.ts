@@ -22,8 +22,13 @@ export class TokenService {
   ) {}
 
   async issueAccessToken(payload: JwtPayload): Promise<string> {
+    // jti makes every issued token unique even when the claims and `iat`
+    // second are identical to a token issued moments earlier (e.g. login
+    // immediately followed by refresh) — HS256 signing is otherwise
+    // deterministic for identical header+payload+secret. Also gives each
+    // token a stable identifier for future revocation/audit use.
     return this.jwt.signAsync(
-      { ...payload },
+      { ...payload, jti: randomBytes(16).toString('hex') },
       {
         secret: this.config.get('JWT_ACCESS_SECRET', { infer: true }),
         expiresIn: this.config.get('JWT_ACCESS_TTL', { infer: true }),
