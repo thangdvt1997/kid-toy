@@ -1,0 +1,330 @@
+datasource db {
+  provider = "postgresql"
+  // NOTE: Prisma 7.10.0 rejects a `url` field here — the connection URL now
+  // lives exclusively in prisma.config.ts (datasource.url). Declaring `url`
+  // in this block fails `prisma validate` with P1012. See
+  // https://pris.ly/d/config-datasource
+}
+
+generator client {
+  provider = "prisma-client"
+  output   = "./generated/prisma"
+}
+
+// -----------------------------------------------------------------------
+// Enums
+// -----------------------------------------------------------------------
+
+enum AccountType {
+  STAFF
+  RETAIL_CUSTOMER
+  BUSINESS_ACCOUNT
+}
+
+enum StaffRole {
+  SUPER_ADMIN
+  SALES
+  WAREHOUSE
+  CONTENT
+}
+
+enum BusinessType {
+  RETAIL_STORE
+  SCHOOL
+  DISTRIBUTOR
+}
+
+enum BusinessApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum Locale {
+  VI
+  EN
+}
+
+enum Gender {
+  BOY
+  GIRL
+  UNISEX
+}
+
+enum ChannelScope {
+  RETAIL_ONLY
+  WHOLESALE_ONLY
+  BOTH
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+}
+
+// -----------------------------------------------------------------------
+// Identity
+// -----------------------------------------------------------------------
+
+model Account {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  type         AccountType
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  staffProfile    StaffProfile?
+  customerProfile CustomerProfile?
+  businessAccount BusinessAccount?
+  refreshTokens   RefreshToken[]
+  resetTokens     PasswordResetToken[]
+
+  @@map("accounts")
+}
+
+model StaffProfile {
+  id        String    @id @default(cuid())
+  accountId String    @unique
+  account   Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  fullName  String
+  role      StaffRole
+
+  @@map("staff_profiles")
+}
+
+model CustomerProfile {
+  id        String  @id @default(cuid())
+  accountId String  @unique
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  fullName  String?
+  phone     String?
+
+  @@map("customer_profiles")
+}
+
+model BusinessAccount {
+  id                  String                 @id @default(cuid())
+  accountId           String                 @unique
+  account             Account                @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  companyName         String
+  taxId               String                 @unique
+  businessLicenseKey  String? // MinIO object key — NOT a public URL
+  businessType        BusinessType
+  approvalStatus      BusinessApprovalStatus @default(PENDING)
+  rejectionReason     String?
+  priceTierId         String?
+  priceTier           PriceTier?             @relation(fields: [priceTierId], references: [id])
+
+  @@map("business_accounts")
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  accountId String
+  account   Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique // SHA-256 hash of the raw token — the raw token is NEVER stored
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([accountId])
+  @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  accountId String
+  account   Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([accountId])
+  @@map("password_reset_tokens")
+}
+
+// -----------------------------------------------------------------------
+// Bilingual catalog
+// -----------------------------------------------------------------------
+
+model Product {
+  id           String       @id @default(cuid())
+  brandId      String?
+  brand        Brand?       @relation(fields: [brandId], references: [id])
+  categoryId   String
+  category     Category     @relation(fields: [categoryId], references: [id])
+  ageRangeMin  Int
+  ageRangeMax  Int
+  gender       Gender       @default(UNISEX)
+  origin       String
+  channelScope ChannelScope @default(BOTH)
+  isActive     Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  translations ProductTranslation[]
+  variants     ProductVariant[]
+  media        ProductMedia[]
+
+  @@index([categoryId])
+  @@index([brandId])
+  @@index([origin])
+  @@index([ageRangeMin, ageRangeMax])
+  @@index([channelScope, isActive])
+  @@map("products")
+}
+
+model ProductTranslation {
+  id          String   @id @default(cuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  locale      Locale
+  name        String
+  slug        String
+  description String?
+
+  @@unique([productId, locale])
+  @@unique([locale, slug]) // per-locale slug uniqueness — global slug uniqueness is the Pitfall 9 mistake
+  @@index([locale, name])
+  @@map("product_translations")
+}
+
+model ProductVariant {
+  id                   String   @id @default(cuid())
+  productId            String
+  product              Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sku                  String   @unique
+  barcode              String?  @unique
+  variantLabel         String?
+  unitsPerInnerBox     Int?
+  unitsPerMasterCarton Int?
+  cartonLengthCm       Decimal? @db.Decimal(8, 2)
+  cartonWidthCm        Decimal? @db.Decimal(8, 2)
+  cartonHeightCm       Decimal? @db.Decimal(8, 2)
+  cartonWeightKg       Decimal? @db.Decimal(8, 3)
+  isActive             Boolean  @default(true)
+
+  certifications   SafetyCertification[]
+  priceListEntries PriceListEntry[]
+  stock            VariantStock?
+
+  @@index([productId])
+  @@map("product_variants")
+}
+
+model SafetyCertification {
+  id          String         @id @default(cuid())
+  variantId   String
+  variant     ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  certNumber  String // số hợp quy QCVN
+  issuingBody String
+  validFrom   DateTime
+  validTo     DateTime
+  batchLabel  String? // free-text placeholder; Phase 2 links this to a real StockLot
+
+  @@index([variantId])
+  @@map("safety_certifications")
+}
+
+model ProductMedia {
+  id        String    @id @default(cuid())
+  productId String
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  type      MediaType
+  objectKey String // MinIO object key — NOT a public URL
+  altTextVi String?
+  altTextEn String?
+  sortOrder Int       @default(0)
+
+  @@index([productId, sortOrder])
+  @@map("product_media")
+}
+
+model Category {
+  id        String     @id @default(cuid())
+  parentId  String?
+  parent    Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children  Category[] @relation("CategoryTree")
+  sortOrder Int        @default(0)
+  isActive  Boolean    @default(true)
+
+  translations CategoryTranslation[]
+  products     Product[]
+
+  @@map("categories")
+}
+
+model CategoryTranslation {
+  id         String   @id @default(cuid())
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  locale     Locale
+  name       String
+  slug       String
+
+  @@unique([categoryId, locale])
+  @@unique([locale, slug])
+  @@map("category_translations")
+}
+
+model Brand {
+  id            String    @id @default(cuid())
+  name          String    @unique
+  originCountry String?
+  products      Product[]
+
+  @@map("brands")
+}
+
+// -----------------------------------------------------------------------
+// Pricing
+// -----------------------------------------------------------------------
+
+model PriceTier {
+  id               String            @id @default(cuid())
+  code             String            @unique // "RETAIL", "DEALER_A", "DEALER_B"
+  name             String
+  isDefault        Boolean           @default(false)
+  entries          PriceListEntry[]
+  businessAccounts BusinessAccount[]
+
+  @@map("price_tiers")
+}
+
+model PriceListEntry {
+  id           String         @id @default(cuid())
+  variantId    String
+  variant      ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  tierId       String
+  tier         PriceTier      @relation(fields: [tierId], references: [id])
+  minQty       Int            @default(1) // Phase 4 quantity breaks reuse this column, no migration needed
+  unitPriceVnd BigInt // VND has no decimal subunit — integer only, NEVER Float or Decimal
+  validFrom    DateTime       @default(now())
+  validTo      DateTime?
+
+  @@unique([variantId, tierId, minQty])
+  @@index([tierId, variantId])
+  @@map("price_list_entries")
+}
+
+// -----------------------------------------------------------------------
+// Stock (Phase 1 stub)
+// -----------------------------------------------------------------------
+
+// Minimal Phase 1 stock signal — CATALOG-08 only needs a status, not a ledger.
+// Phase 2 (INV-01..08) replaces the storage behind this with a real
+// SKU × Warehouse × Batch ledger; keep the read contract (a per-variant
+// "available quantity") stable so the catalog API doesn't need to change
+// shape when that migration happens.
+model VariantStock {
+  variantId        String         @id
+  variant          ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  quantityOnHand   Int            @default(0)
+  reorderThreshold Int            @default(0)
+  updatedAt        DateTime       @updatedAt
+
+  @@map("variant_stock")
+}
