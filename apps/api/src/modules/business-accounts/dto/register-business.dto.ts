@@ -55,6 +55,15 @@ export class RegisterBusinessDto {
   // Multipart file field — validated by buildFileValidationPipe via
   // @UploadedFile() in the controller, not by class-validator. Declared here
   // only so Swagger documents it as part of the multipart/form-data body.
+  // @IsOptional() is required even though this is never actually validated:
+  // with tsconfig's ES2023 target, `useDefineForClassFields` makes every
+  // bare class field (even unassigned) an own `undefined`-valued property on
+  // the transformed DTO instance. The global ValidationPipe's
+  // `whitelist: true` + `forbidNonWhitelisted: true` rejects any own
+  // property with zero class-validator decorator metadata as "should not
+  // exist" — so every register call failed with 400, file attached or not,
+  // until this class knows about `licence` at all via at least one decorator.
   @ApiProperty({ type: 'string', format: 'binary' })
+  @IsOptional()
   licence?: unknown;
 }

@@ -14,7 +14,10 @@ const NEW_PASSWORD = 'Br4nd-New-Passw0rd!';
  * real recipient would read it from their inbox.
  */
 function extractResetUrlFromLog(logSpy: jest.SpyInstance): string {
-  const call = logSpy.mock.calls.find((args) =>
+  // findLast, not find: a test may trigger more than one forgot-password
+  // call against the same spy instance (e.g. vi then en locale) — the most
+  // recently logged URL is the one that matters, not the first.
+  const call = logSpy.mock.calls.findLast((args) =>
     String(args[0]).includes('[mail:password-reset]'),
   );
   if (!call) {
