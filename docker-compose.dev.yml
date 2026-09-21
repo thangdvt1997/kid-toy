@@ -1,0 +1,18 @@
+# docker-compose.dev.yml — LOCAL-ONLY override, publishes ports bound to 127.0.0.1 only.
+#
+# NEVER bind to the all-interfaces wildcard address here: Docker writes iptables rules
+# directly and bypasses ufw, so an all-interfaces bind on a VPS would expose
+# Postgres/Redis/MinIO to the public internet even behind a configured firewall
+# (PITFALLS.md Pitfall 6). This file is for local developer tooling only (Prisma
+# Studio, redis-cli, mc) — it is never used in production.
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:5432:5432"
+  redis:
+    ports:
+      - "127.0.0.1:6379:6379"
+  minio:
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
