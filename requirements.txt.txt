@@ -1,0 +1,138 @@
+Website chuyên xuất nhập khẩu, bán sỉ và bán lẻ đồ chơi trẻ em nên có các thành phần chính sau:
+1. Trang giới thiệu doanh nghiệp
+- Giới thiệu công ty, lịch sử hoạt động
+- Năng lực nhập khẩu và phân phối
+- Hệ thống kho hàng, đại lý và đối tác
+- Giấy phép kinh doanh, chứng nhận sản phẩm
+- Chính sách chất lượng và an toàn đồ chơi
+2. Danh mục sản phẩm
+Phân loại theo:
+- Độ tuổi: 0–3, 3–6, 6–12 tuổi
+- Bé trai, bé gái hoặc dùng chung
+- Đồ chơi giáo dục, vận động, mô hình, lắp ráp
+- Đồ chơi ngoài trời, đồ chơi điện tử
+- Thương hiệu
+- Sản phẩm nhập khẩu, sản xuất trong nước
+- Hàng mới, bán chạy, khuyến mãi
+- Hàng sỉ, hàng lẻ
+Thông tin từng sản phẩm:
+- Hình ảnh, video
+- Mã SKU, mã vạch
+- Xuất xứ, thương hiệu
+- Độ tuổi phù hợp
+- Kích thước, trọng lượng, chất liệu
+- Tiêu chuẩn và chứng nhận an toàn
+- Giá bán lẻ, giá sỉ
+- Số lượng tồn kho
+- Quy cách đóng thùng
+- Số lượng tối thiểu khi bán sỉ
+- Tài liệu hướng dẫn sử dụng
+3. Chức năng bán lẻ
+- Giỏ hàng và đặt hàng
+- Mã giảm giá
+- Thanh toán online hoặc COD
+- Tính phí vận chuyển
+- Theo dõi trạng thái đơn hàng
+- Lịch sử mua hàng
+- Đổi trả và bảo hành
+- Đánh giá sản phẩm
+- Gợi ý sản phẩm liên quan
+4. Chức năng bán sỉ và đại lý
+- Đăng ký tài khoản đại lý
+- Phê duyệt tài khoản bán sỉ
+- Bảng giá riêng theo cấp đại lý
+- Chiết khấu theo số lượng hoặc doanh số
+- Đặt hàng theo thùng, kiện hoặc container
+- Yêu cầu báo giá
+- Tải bảng giá Excel/PDF
+- Công nợ và hạn mức tín dụng
+- Đơn hàng tối thiểu
+- Quản lý hợp đồng
+- Nhân viên kinh doanh phụ trách
+- Đặt hàng nhanh bằng SKU hoặc file Excel
+5. Quản lý xuất nhập khẩu
+- Quản lý nhà cung cấp nước ngoài
+- Quốc gia và cảng xuất xứ
+- Hợp đồng nhập khẩu
+- Purchase Order
+- Commercial Invoice
+- Packing List
+- Bill of Lading
+- Chứng nhận xuất xứ C/O
+- Chứng nhận chất lượng và an toàn
+- Theo dõi container và lô hàng
+- Trạng thái thông quan
+- Chi phí vận chuyển, thuế và phí nhập khẩu
+- Quản lý tỷ giá
+- Tính giá vốn sau nhập khẩu
+- Quản lý lô hàng và ngày nhập kho
+6. Quản lý kho
+- Nhiều kho hàng
+- Nhập, xuất và chuyển kho
+- Tồn kho theo SKU
+- Tồn kho theo lô
+- Cảnh báo sắp hết hàng
+- Kiểm kê kho
+- In mã vạch hoặc QR
+- Quản lý vị trí kệ hàng
+- Hàng lỗi, hàng đổi trả
+- Đồng bộ tồn kho giữa website và cửa hàng
+7. Quản lý bán hàng
+- Đơn bán lẻ và đơn bán sỉ
+- Báo giá và hợp đồng
+- Hóa đơn bán hàng
+- Trạng thái thanh toán
+- Công nợ khách hàng
+- Quản lý giao hàng
+- Đơn hoàn và hủy
+- Doanh thu, lợi nhuận
+- Báo cáo theo sản phẩm, khách hàng, đại lý và nhân viên
+8. Quản lý khách hàng
+- Hồ sơ khách lẻ
+- Hồ sơ doanh nghiệp và đại lý
+- Phân nhóm khách hàng
+- Lịch sử mua hàng
+- Hạn mức công nợ
+- Chương trình tích điểm
+- Hạng thành viên
+- Email, SMS hoặc Zalo chăm sóc khách hàng
+- Quản lý yêu cầu hỗ trợ và khiếu nại
+9. Nội dung và marketing
+- Tin tức và bài viết
+- Hướng dẫn chọn đồ chơi theo độ tuổi
+- Video giới thiệu sản phẩm
+- Landing page chương trình khuyến mãi
+- Banner quảng cáo
+- Flash sale
+- Combo sản phẩm
+- Sản phẩm mua kèm
+- Mã giới thiệu và affiliate
+- SEO sản phẩm, danh mục và bài viết
+- Chia sẻ lên mạng xã hội
+10. Quản trị hệ thống
+- Dashboard tổng quan
+- Quản lý sản phẩm và danh mục
+- Quản lý đơn hàng, kho và khách hàng
+- Phân quyền nhân viên theo vai trò
+- Nhật ký thao tác
+- Import/export Excel
+- Sao lưu dữ liệu
+- Quản lý cấu hình website
+- Quản lý nhiều ngôn ngữ
+- Quản lý nhiều loại tiền tệ
+- Bảo mật đăng nhập và xác thực hai lớp
+Các thành phần mở rộng
+- Kết nối đơn vị vận chuyển
+- Kết nối cổng thanh toán
+- Đồng bộ Shopee, Lazada, TikTok Shop
+- Kết nối phần mềm kế toán hoặc ERP
+- Kết nối CRM
+- Chat trực tuyến và chatbot tư vấn
+- Hóa đơn điện tử
+- Quét mã vạch bằng điện thoại
+- Ứng dụng dành cho nhân viên bán hàng
+- API kết nối đại lý
+- Cổng B2B riêng cho khách sỉ
+- AI gợi ý sản phẩm theo độ tuổi và ngân sách
+- Báo cáo BI về doanh thu, tồn kho và lợi nhuận
+Nên chia hệ thống thành hai khu vực rõ ràng: website bán lẻ B2C dành cho người tiêu dùng và cổng bán sỉ B2B dành cho đại lý, cửa hàng, trường học và nhà phân phối. Phần quản trị phía sau dùng chung dữ liệu sản phẩm, kho, đơn hàng và khách hàng.
