@@ -5,3 +5,7 @@ node_modules/
 dist/
 build/
 *.log
+.turbo/
+.next/
+*.tsbuildinfo
+apps/api/prisma/generated/
