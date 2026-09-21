@@ -3,7 +3,7 @@ import type {
   BusinessAccount,
   CustomerProfile,
   StaffProfile,
-} from '../../prisma/generated/prisma/client';
+} from '../../../prisma/generated/prisma/client';
 import type { JwtPayload } from '../../common/types/jwt-payload';
 
 export type AccountWithRelations = Account & {

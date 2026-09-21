@@ -7,7 +7,9 @@
  * expose jsonwebtoken's transitive `ms` dependency to apps/api's own code,
  * and this project has no other need for a general-purpose duration parser.
  */
-const UNIT_MS: Record<string, number> = {
+type DurationUnit = 'ms' | 's' | 'm' | 'h' | 'd';
+
+const UNIT_MS: Record<DurationUnit, number> = {
   ms: 1,
   s: 1000,
   m: 60_000,
@@ -15,11 +17,16 @@ const UNIT_MS: Record<string, number> = {
   d: 24 * 60 * 60_000,
 };
 
+function isDurationUnit(value: string): value is DurationUnit {
+  return value in UNIT_MS;
+}
+
 export function parseDurationMs(value: string): number {
   const match = /^(\d+)\s*(ms|s|m|h|d)$/.exec(value.trim());
-  if (!match) {
+  const amount = match?.[1];
+  const unit = match?.[2];
+  if (!amount || !unit || !isDurationUnit(unit)) {
     throw new Error(`Invalid duration string: "${value}" (expected e.g. "15m", "30d")`);
   }
-  const [, amount, unit] = match;
-  return Number(amount) * UNIT_MS[unit as keyof typeof UNIT_MS];
+  return Number(amount) * UNIT_MS[unit];
 }
