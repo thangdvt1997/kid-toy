@@ -142,13 +142,78 @@ Explicitly excluded. Documented to prevent scope creep.
 
 ## Traceability
 
-Populated during roadmap creation (`/gsd:plan-phase`). See `.planning/ROADMAP.md` after roadmap is generated.
+Populated during roadmap creation (`/gsd:new-project`). See `.planning/ROADMAP.md` for full phase details.
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| AUTH-01 | Phase 1 | Pending |
+| AUTH-02 | Phase 1 | Pending |
+| AUTH-03 | Phase 1 | Pending |
+| AUTH-04 | Phase 1 | Pending |
+| AUTH-05 | Phase 1 | Pending |
+| CATALOG-01 | Phase 1 | Pending |
+| CATALOG-02 | Phase 1 | Pending |
+| CATALOG-03 | Phase 1 | Pending |
+| CATALOG-04 | Phase 1 | Pending |
+| CATALOG-05 | Phase 1 | Pending |
+| CATALOG-06 | Phase 1 | Pending |
+| CATALOG-07 | Phase 1 | Pending |
+| CATALOG-08 | Phase 1 | Pending |
+| CATALOG-09 | Phase 1 | Pending |
+| INV-01 | Phase 2 | Pending |
+| INV-02 | Phase 2 | Pending |
+| INV-03 | Phase 2 | Pending |
+| INV-04 | Phase 2 | Pending |
+| INV-05 | Phase 2 | Pending |
+| INV-06 | Phase 2 | Pending |
+| INV-07 | Phase 2 | Pending |
+| INV-08 | Phase 2 | Pending |
+| B2C-01 | Phase 3 | Pending |
+| B2C-02 | Phase 3 | Pending |
+| B2C-03 | Phase 3 | Pending |
+| B2C-04 | Phase 3 | Pending |
+| B2C-05 | Phase 3 | Pending |
+| B2C-06 | Phase 3 | Pending |
+| B2C-07 | Phase 3 | Pending |
+| B2B-01 | Phase 4 | Pending |
+| B2B-02 | Phase 4 | Pending |
+| B2B-03 | Phase 4 | Pending |
+| B2B-04 | Phase 4 | Pending |
+| B2B-05 | Phase 4 | Pending |
+| B2B-06 | Phase 4 | Pending |
+| B2B-07 | Phase 4 | Pending |
+| B2B-08 | Phase 4 | Pending |
+| B2B-09 | Phase 4 | Pending |
+| B2B-10 | Phase 4 | Pending |
+| IMPORT-01 | Phase 5 | Pending |
+| IMPORT-02 | Phase 5 | Pending |
+| IMPORT-03 | Phase 5 | Pending |
+| IMPORT-04 | Phase 5 | Pending |
+| IMPORT-05 | Phase 5 | Pending |
+| IMPORT-06 | Phase 5 | Pending |
+| IMPORT-07 | Phase 5 | Pending |
+| SALES-01 | Phase 6 | Pending |
+| SALES-02 | Phase 6 | Pending |
+| SALES-03 | Phase 6 | Pending |
+| SALES-04 | Phase 6 | Pending |
+| SALES-05 | Phase 6 | Pending |
+| CUST-01 | Phase 6 | Pending |
+| CUST-02 | Phase 6 | Pending |
+| CUST-03 | Phase 6 | Pending |
+| ADMIN-01 | Phase 7 | Pending |
+| ADMIN-02 | Phase 7 | Pending |
+| ADMIN-03 | Phase 7 | Pending |
+| ADMIN-04 | Phase 7 | Pending |
+| CONTENT-01 | Phase 7 | Pending |
+| CONTENT-02 | Phase 7 | Pending |
+| CONTENT-03 | Phase 7 | Pending |
+| CONTENT-04 | Phase 7 | Pending |
 
 **Coverage:**
-- v1 requirements: 45 total
-- Mapped to phases: pending roadmap creation
-- Unmapped: pending roadmap creation
+- v1 requirements: 62 total
+- Mapped to phases: 62/62
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-09-21*
-*Last updated: 2026-09-21 after initial definition, informed by `.planning/research/FEATURES.md`*
+*Last updated: 2026-09-21 after roadmap creation — all 62 v1 requirements mapped to 7 phases in `.planning/ROADMAP.md`*
