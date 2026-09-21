@@ -23,12 +23,18 @@ function pdfBuffer(): Buffer {
   return Buffer.from('%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\ntrailer\n%%EOF');
 }
 
-/** First bytes match the PNG magic number signature. */
+/**
+ * A real, complete, minimal 1x1 transparent PNG — not just the leading
+ * signature bytes. `file-type` (used by FileTypeValidator) parses the IHDR
+ * chunk that follows the 8-byte magic number to confirm the file is a
+ * genuine PNG, so a signature-plus-zero-padding buffer is NOT detected as
+ * PNG and every register call using it 400s (found via live e2e testing).
+ */
 function pngBuffer(): Buffer {
-  return Buffer.concat([
-    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-    Buffer.alloc(32, 0),
-  ]);
+  return Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    'base64',
+  );
 }
 
 /** Not a PDF/JPEG/PNG at all — DOS/PE executable magic number (MZ). */
