@@ -25,8 +25,12 @@ import { RegisterCustomerDto } from './dto/register-customer.dto';
 import { TokenService } from './token.service';
 
 // Tighter than the global 120/min ThrottlerModule default — mitigates
-// credential stuffing / brute force (threat T-01-14).
-const AUTH_THROTTLE = { default: { limit: 5, ttl: 60_000 } };
+// credential stuffing / brute force (threat T-01-14). Overridable via
+// AUTH_THROTTLE_LIMIT so automated e2e suites (many sequential logins from
+// one client) aren't rate-limited; unset in production/dev, so the secure
+// default of 5/min always applies there.
+const AUTH_THROTTLE_LIMIT = Number(process.env.AUTH_THROTTLE_LIMIT) || 5;
+const AUTH_THROTTLE = { default: { limit: AUTH_THROTTLE_LIMIT, ttl: 60_000 } };
 
 @ApiTags('auth')
 @Controller('auth')
@@ -52,6 +56,7 @@ export class AuthController {
 
   @Throttle(AUTH_THROTTLE)
   @UseGuards(AuthGuard('local'))
+  @HttpCode(HttpStatus.OK)
   @Post('login')
   @ApiOperation({ summary: 'Log in with email and password' })
   @ApiResponse({ status: 200, description: 'Tokens issued' })
