@@ -61,7 +61,11 @@ describe('Business Accounts (e2e)', () => {
     return (res.body as { accessToken: string }).accessToken;
   }
 
-  async function registerBusiness(overrides: {
+  // NOT async — must return the chainable supertest `Test` (thenable, but
+  // also exposes `.expect()`/`.attach()`) directly. Marking this `async`
+  // would make TS infer the return type via `Awaited<Test>`, collapsing it
+  // to `Promise<Response>` and losing `.expect()` at every call site.
+  function registerBusiness(overrides: {
     email?: string;
     taxId?: string;
     companyName?: string;

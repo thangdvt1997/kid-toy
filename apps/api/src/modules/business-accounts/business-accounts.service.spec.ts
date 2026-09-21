@@ -121,8 +121,8 @@ describe('BusinessAccountsService', () => {
         file.buffer,
         file.mimetype,
       );
-      const putOrder = storage.putObject.mock.invocationCallOrder[0];
-      const txOrder = prisma.$transaction.mock.invocationCallOrder[0];
+      const putOrder = storage.putObject.mock.invocationCallOrder[0]!;
+      const txOrder = prisma.$transaction.mock.invocationCallOrder[0]!;
       expect(putOrder).toBeLessThan(txOrder);
     });
 

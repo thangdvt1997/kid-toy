@@ -1,5 +1,6 @@
 import {
   CreateBucketCommand,
+  DeleteObjectCommand,
   GetObjectCommand,
   HeadBucketCommand,
   S3Client,
@@ -103,5 +104,16 @@ export class StorageService implements OnModuleInit {
   ): Promise<string> {
     const command = new GetObjectCommand({ Bucket: bucket, Key: key });
     return getSignedUrl(this.client, command, { expiresIn: expiresInSeconds });
+  }
+
+  /**
+   * Best-effort cleanup for the "upload succeeded, DB write failed" case
+   * (e.g. AUTH-03's business-licence registration transaction). Callers
+   * should treat a failure here as non-fatal — an orphaned object in a
+   * private bucket is a minor cleanup debt, not a security or correctness
+   * issue, and must never mask the original error.
+   */
+  async deleteObject(bucket: string, key: string): Promise<void> {
+    await this.client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
   }
 }

@@ -27,6 +27,9 @@ export const envSchema = z.object({
   PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().positive().default(60),
   BCRYPT_COST: z.coerce.number().int().min(12, 'BCRYPT_COST must be at least 12').default(12),
 
+  UPLOAD_MAX_DOCUMENT_BYTES: z.coerce.number().int().positive().default(10 * 1024 * 1024),
+  UPLOAD_MAX_IMAGE_BYTES: z.coerce.number().int().positive().default(5 * 1024 * 1024),
+
   MINIO_ENDPOINT: z.string().url('MINIO_ENDPOINT must be a valid URL'),
   MINIO_ROOT_USER: z.string().min(1, 'MINIO_ROOT_USER is required'),
   MINIO_ROOT_PASSWORD: z.string().min(1, 'MINIO_ROOT_PASSWORD is required'),
