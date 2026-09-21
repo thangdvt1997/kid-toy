@@ -69,6 +69,7 @@ export class AuthController {
     return this.authService.login(account);
   }
 
+  @HttpCode(HttpStatus.OK)
   @Post('refresh')
   @ApiOperation({ summary: 'Rotate a refresh token for a new access/refresh pair' })
   @ApiResponse({ status: 200, description: 'New tokens issued' })
