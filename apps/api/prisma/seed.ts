@@ -18,25 +18,7 @@ import bcrypt from 'bcrypt';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from './generated/prisma/client';
 
-const DATABASE_URL = process.env.DATABASE_URL;
-if (!DATABASE_URL) {
-  throw new Error('DATABASE_URL is required to run the seed.');
-}
-
-// Never hardcode a password literal in this file — the seed must fail
-// loudly instead of silently creating a predictable backdoor credential.
-const SEED_DEFAULT_PASSWORD = process.env.SEED_DEFAULT_PASSWORD;
-if (!SEED_DEFAULT_PASSWORD) {
-  throw new Error(
-    'SEED_DEFAULT_PASSWORD is required to run the seed (set it in .env — see .env.example).',
-  );
-}
-
 const BCRYPT_COST = Number.parseInt(process.env.BCRYPT_COST ?? '12', 10);
-
-const prisma = new PrismaClient({
-  adapter: new PrismaPg({ connectionString: DATABASE_URL }),
-});
 
 /** Rounds to the nearest 500 VND — keeps seeded prices human-round. */
 function roundVnd(n: number): bigint {
@@ -52,8 +34,22 @@ function tierPrices(retail: number) {
   };
 }
 
-async function main() {
-  const passwordHash = await bcrypt.hash(SEED_DEFAULT_PASSWORD as string, BCRYPT_COST);
+/**
+ * Reusable seed logic — used both by the CLI entrypoint below (`tsx
+ * prisma/seed.ts`) and by `apps/api/test/utils/test-app.ts`'s
+ * `resetAndSeed()`, which seeds the isolated `kidtoy_test` database before
+ * each e2e run against a shared `PrismaService` instance.
+ */
+export async function seedDatabase(prisma: PrismaClient): Promise<void> {
+  // Never hardcode a password literal in this file — the seed must fail
+  // loudly instead of silently creating a predictable backdoor credential.
+  const SEED_DEFAULT_PASSWORD = process.env.SEED_DEFAULT_PASSWORD;
+  if (!SEED_DEFAULT_PASSWORD) {
+    throw new Error(
+      'SEED_DEFAULT_PASSWORD is required to run the seed (set it in .env — see .env.example).',
+    );
+  }
+  const passwordHash = await bcrypt.hash(SEED_DEFAULT_PASSWORD, BCRYPT_COST);
 
   // ---------------------------------------------------------------------
   // 1. Price tiers
@@ -530,12 +526,25 @@ async function main() {
   console.log(`  variant_stock: ${stockCount}`);
 }
 
-main()
-  .then(async () => {
-    await prisma.$disconnect();
-  })
-  .catch(async (err) => {
-    console.error(err);
-    await prisma.$disconnect();
-    process.exit(1);
+// CLI entrypoint — only runs when this file is executed directly
+// (`tsx prisma/seed.ts` / `pnpm --filter api run db:seed`), not when
+// `seedDatabase` is imported programmatically by test infra.
+if (require.main === module) {
+  const DATABASE_URL = process.env.DATABASE_URL;
+  if (!DATABASE_URL) {
+    throw new Error('DATABASE_URL is required to run the seed.');
+  }
+  const prisma = new PrismaClient({
+    adapter: new PrismaPg({ connectionString: DATABASE_URL }),
   });
+
+  seedDatabase(prisma)
+    .then(async () => {
+      await prisma.$disconnect();
+    })
+    .catch(async (err) => {
+      console.error(err);
+      await prisma.$disconnect();
+      process.exit(1);
+    });
+}
