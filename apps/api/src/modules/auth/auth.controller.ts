@@ -19,9 +19,12 @@ import type { JwtPayload } from '../../common/types/jwt-payload';
 import { PrismaService } from '../../prisma/prisma.service';
 import { buildJwtPayload, type AccountWithRelations } from './account-payload.util';
 import { AuthService } from './auth.service';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { RegisterCustomerDto } from './dto/register-customer.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { PasswordResetService } from './password-reset.service';
 import { TokenService } from './token.service';
 
 // Tighter than the global 120/min ThrottlerModule default — mitigates
@@ -39,6 +42,7 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly tokenService: TokenService,
     private readonly prisma: PrismaService,
+    private readonly passwordResetService: PasswordResetService,
   ) {}
 
   @Throttle(AUTH_THROTTLE)
@@ -101,5 +105,27 @@ export class AuthController {
     });
     const payload = buildJwtPayload(account);
     return this.authService.toSafeAccount(account, payload);
+  }
+
+  @Throttle(AUTH_THROTTLE)
+  @HttpCode(HttpStatus.ACCEPTED)
+  @Post('forgot-password')
+  @ApiOperation({
+    summary: 'Request a password reset link',
+    description: 'Always returns 202, even for an unknown email — no account enumeration.',
+  })
+  @ApiResponse({ status: 202, description: 'Reset request accepted (always)' })
+  async forgotPassword(@Body() dto: ForgotPasswordDto): Promise<void> {
+    await this.passwordResetService.request(dto.email, dto.locale ?? 'vi');
+  }
+
+  @Throttle(AUTH_THROTTLE)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Post('reset-password')
+  @ApiOperation({ summary: 'Complete a password reset using a single-use token' })
+  @ApiResponse({ status: 204, description: 'Password updated; all sessions revoked' })
+  @ApiResponse({ status: 400, description: 'Invalid, used, or expired token' })
+  async resetPassword(@Body() dto: ResetPasswordDto): Promise<void> {
+    await this.passwordResetService.reset(dto.token, dto.password);
   }
 }
