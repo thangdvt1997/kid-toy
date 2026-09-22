@@ -1,9 +1,10 @@
-import { useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
+import AccountNav from "./AccountNav";
 import LocaleSwitcher from "./LocaleSwitcher";
 
-export default function SiteHeader() {
-  const t = useTranslations("Common");
+export default async function SiteHeader() {
+  const t = await getTranslations("Common");
 
   return (
     <header>
@@ -11,7 +12,7 @@ export default function SiteHeader() {
       <nav>
         <Link href="/catalog">{t("catalog")}</Link>
       </nav>
-      {/* Plan 09 inserts login/account links (retail + B2B session UI) here. */}
+      <AccountNav />
       <LocaleSwitcher />
     </header>
   );
