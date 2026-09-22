@@ -134,4 +134,71 @@ export interface VariantStockDto {
   status: StockStatus;
 }
 
+// ---------------------------------------------------------------------
+// Public catalog read path (Phase 1 Plan 07 — CATALOG-06, 07, 08, 09)
+// ---------------------------------------------------------------------
+
+export interface CatalogPrice {
+  unitPriceVnd: string; // VND as a decimal STRING — BigInt is not JSON-safe
+  tierCode: string;
+  minQty: number;
+}
+
+export interface CatalogVariantSummary {
+  id: string;
+  sku: string;
+  barcode: string | null;
+  variantLabel: string | null;
+  price: CatalogPrice | null;
+  stockStatus: StockStatus;
+}
+
+export interface CatalogListItem {
+  id: string;
+  locale: "vi" | "en";
+  name: string;
+  slug: string;
+  categoryId: string;
+  categoryName: string;
+  brandId: string | null;
+  brandName: string | null;
+  origin: string;
+  ageRangeMin: number;
+  ageRangeMax: number;
+  gender: "BOY" | "GIRL" | "UNISEX";
+  primaryImageUrl: string | null;
+  price: CatalogPrice | null;
+  stockStatus: StockStatus;
+}
+
+export interface CatalogProductDetail extends CatalogListItem {
+  description: string | null;
+  media: MediaDto[];
+  variants: CatalogVariantSummary[];
+  certifications: CertificationDto[];
+  packaging: {
+    unitsPerInnerBox: number | null;
+    unitsPerMasterCarton: number | null;
+    cartonLengthCm: number | null;
+    cartonWidthCm: number | null;
+    cartonHeightCm: number | null;
+    cartonWeightKg: number | null;
+  } | null;
+  /** Set only when the requested locale's translation row was entirely absent and the `vi` row was used instead. */
+  localeFallbackApplied?: boolean;
+}
+
+export interface FacetOption {
+  value: string;
+  label: string;
+  count: number;
+}
+
+export interface AgeBucket {
+  label: string;
+  min: number;
+  max: number;
+  count: number;
+}
+
 export {};

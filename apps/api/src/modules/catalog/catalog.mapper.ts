@@ -34,7 +34,7 @@ type ProductWithRelations = Product & {
 };
 
 /** Decimal fields arrive as Prisma's decimal.js-compatible instances; Number() coerces via their own toString/valueOf. */
-function decimalToNumber(value: unknown): number | null {
+export function decimalToNumber(value: unknown): number | null {
   if (value === null || value === undefined) {
     return null;
   }
