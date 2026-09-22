@@ -266,4 +266,381 @@ describe('Catalog Admin (e2e)', () => {
       });
     });
   });
+
+  // -----------------------------------------------------------------
+  // Products, variants, certifications (Task 2) — CATALOG-01,03,04,05,09
+  // -----------------------------------------------------------------
+  describe('products, variants, certifications', () => {
+    let contentToken: string;
+    let adminToken: string;
+    let salesToken: string;
+    let warehouseToken: string;
+    let categoryId: string;
+    let brandId: string;
+
+    beforeAll(async () => {
+      contentToken = await loginAs('content@kidtoy.local');
+      adminToken = await loginAs('admin@kidtoy.local');
+      salesToken = await loginAs('sales@kidtoy.local');
+      warehouseToken = await loginAs('warehouse@kidtoy.local');
+
+      const seed = uniqueEmail('pv-cat').split('@')[0]!;
+      const cat = await request(server)
+        .post('/api/admin/categories')
+        .set('Authorization', `Bearer ${contentToken}`)
+        .send({ translations: bothLocaleTranslations(seed) })
+        .expect(201);
+      categoryId = cat.body.id as string;
+
+      const brand = await request(server)
+        .post('/api/admin/brands')
+        .set('Authorization', `Bearer ${contentToken}`)
+        .send({ name: `Brand-${seed}` })
+        .expect(201);
+      brandId = brand.body.id as string;
+    });
+
+    function baseProductBody(seed: string) {
+      return {
+        categoryId,
+        brandId,
+        ageRangeMin: 3,
+        ageRangeMax: 6,
+        gender: 'UNISEX',
+        origin: 'VN',
+        channelScope: 'BOTH',
+        translations: [
+          { locale: 'vi', name: `Ten ${seed}`, slug: `p-vi-${seed}`, description: 'Mo ta' },
+          { locale: 'en', name: `Name ${seed}`, slug: `p-en-${seed}`, description: 'Description' },
+        ],
+      };
+    }
+
+    describe('POST /api/admin/products', () => {
+      it('1. creates a product with both translations (201), 2 product_translations rows', async () => {
+        const seed = uniqueEmail('prod').split('@')[0]!;
+        const res = await request(server)
+          .post('/api/admin/products')
+          .set('Authorization', `Bearer ${contentToken}`)
+          .send(baseProductBody(seed))
+          .expect(201);
+        expect(res.body.translations.vi.name).toBe(`Ten ${seed}`);
+        expect(res.body.translations.en.name).toBe(`Name ${seed}`);
+
+        const count = await prisma.productTranslation.count({
+          where: { productId: res.body.id as string },
+        });
+        expect(count).toBe(2);
+      });
+
+      it('2. rejects ageRangeMin > ageRangeMax (400)', async () => {
+        const seed = uniqueEmail('prod-age').split('@')[0]!;
+        await request(server)
+          .post('/api/admin/products')
+          .set('Authorization', `Bearer ${contentToken}`)
+          .send({ ...baseProductBody(seed), ageRangeMin: 10, ageRangeMax: 5 })
+          .expect(400);
+      });
+
+      it('3. rejects ageRangeMin < 0 or ageRangeMax > 18 (400)', async () => {
+        const seed = uniqueEmail('prod-age2').split('@')[0]!;
+        await request(server)
+          .post('/api/admin/products')
+          .set('Authorization', `Bearer ${contentToken}`)
+          .send({ ...baseProductBody(seed), ageRangeMin: -1 })
+          .expect(400);
+
+        const seed2 = uniqueEmail('prod-age3').split('@')[0]!;
+        await request(server)
+          .post('/api/admin/products')
+          .set('Authorization', `Bearer ${contentToken}`)
+          .send({ ...baseProductBody(seed2), ageRangeMax: 19 })
+          .expect(400);
+      });
+
+      it('4. rejects a non-existent categoryId (400 CATEGORY_NOT_FOUND)', async () => {
+        const seed = uniqueEmail('prod-cat').split('@')[0]!;
+        const res = await request(server)
+          .post('/api/admin/products')
+          .set('Authorization', `Bearer ${contentToken}`)
+          .send({ ...baseProductBody(seed), categoryId: 'does-not-exist' })
+          .expect(400);
+        expect(res.body.message).toBe('CATEGORY_NOT_FOUND');
+      });
+
+      it('5. rejects a non-existent brandId (400 BRAND_NOT_FOUND)', async () => {
+        const seed = uniqueEmail('prod-brand').split('@')[0]!;
+        const res = await request(server)
+          .post('/api/admin/products')
+          .set('Authorization', `Bearer ${contentToken}`)
+          .send({ ...baseProductBody(seed), brandId: 'does-not-exist' })
+          .expect(400);
+        expect(res.body.message).toBe('BRAND_NOT_FOUND');
+      });
+
+      it('6. rejects a missing locale (400 BOTH_LOCALES_REQUIRED)', async () => {
+        const seed = uniqueEmail('prod-locale').split('@')[0]!;
+        const body = baseProductBody(seed);
+        await request(server)
+          .post('/api/admin/products')
+          .set('Authorization', `Bearer ${contentToken}`)
+          .send({ ...body, translations: [body.translations[0]] })
+          .expect(400);
+      });
+
+      it('7. rejects a product slug colliding within the same locale (409 SLUG_TAKEN)', async () => {
+        const seed = uniqueEmail('prod-slugdup').split('@')[0]!;
+        const body = baseProductBody(seed);
+        await request(server)
+          .post('/api/admin/products')
+          .set('Authorization', `Bearer ${contentToken}`)
+          .send(body)
+          .expect(201);
+
+        const seed2 = uniqueEmail('prod-slugdup2').split('@')[0]!;
+        const body2 = baseProductBody(seed2);
+        body2.translations[0]!.slug = body.translations[0]!.slug; // same VI slug
+        await request(server)
+          .post('/api/admin/products')
+          .set('Authorization', `Bearer ${contentToken}`)
+          .send(body2)
+          .expect(409);
+      });
+
+      it('8. 403 for SALES/WAREHOUSE, 401 with no token', async () => {
+        const seed = uniqueEmail('prod-rbac').split('@')[0]!;
+        await request(server)
+          .post('/api/admin/products')
+          .set('Authorization', `Bearer ${salesToken}`)
+          .send(baseProductBody(seed))
+          .expect(403);
+        await request(server)
+          .post('/api/admin/products')
+          .set('Authorization', `Bearer ${warehouseToken}`)
+          .send(baseProductBody(seed))
+          .expect(403);
+        await request(server).post('/api/admin/products').send(baseProductBody(seed)).expect(401);
+      });
+    });
+
+    describe('PATCH /api/admin/products/:id', () => {
+      it('9. updating only the en translation leaves the vi row untouched', async () => {
+        const seed = uniqueEmail('prod-patch').split('@')[0]!;
+        const created = await request(server)
+          .post('/api/admin/products')
+          .set('Authorization', `Bearer ${contentToken}`)
+          .send(baseProductBody(seed))
+          .expect(201);
+
+        const res = await request(server)
+          .patch(`/api/admin/products/${created.body.id}`)
+          .set('Authorization', `Bearer ${contentToken}`)
+          .send({ translations: [{ locale: 'en', name: 'Updated EN', slug: `p-en-upd-${seed}` }] })
+          .expect(200);
+
+        expect(res.body.translations.en.name).toBe('Updated EN');
+        expect(res.body.translations.vi.name).toBe(`Ten ${seed}`);
+      });
+    });
+
+    describe('DELETE /api/admin/products/:id', () => {
+      it('10. soft-deletes (204), row still exists with isActive=false', async () => {
+        const seed = uniqueEmail('prod-del').split('@')[0]!;
+        const created = await request(server)
+          .post('/api/admin/products')
+          .set('Authorization', `Bearer ${contentToken}`)
+          .send(baseProductBody(seed))
+          .expect(201);
+
+        await request(server)
+          .delete(`/api/admin/products/${created.body.id}`)
+          .set('Authorization', `Bearer ${contentToken}`)
+          .expect(204);
+
+        const row = await prisma.product.findUniqueOrThrow({
+          where: { id: created.body.id as string },
+        });
+        expect(row.isActive).toBe(false);
+      });
+    });
+
+    describe('POST /api/admin/products/:id/variants', () => {
+      let productId: string;
+
+      beforeAll(async () => {
+        const seed = uniqueEmail('prod-var').split('@')[0]!;
+        const created = await request(server)
+          .post('/api/admin/products')
+          .set('Authorization', `Bearer ${contentToken}`)
+          .send(baseProductBody(seed))
+          .expect(201);
+        productId = created.body.id as string;
+      });
+
+      it('11. persists sku, barcode, variantLabel and all five carton fields; round-trips exactly', async () => {
+        const sku = `KT-E2E-${uniqueEmail('v').split('@')[0]!.slice(0, 8).toUpperCase()}`;
+        const res = await request(server)
+          .post(`/api/admin/products/${productId}/variants`)
+          .set('Authorization', `Bearer ${contentToken}`)
+          .send({
+            sku,
+            barcode: '8938500001234',
+            variantLabel: 'Hop qua tang',
+            unitsPerInnerBox: 6,
+            unitsPerMasterCarton: 24,
+            cartonLengthCm: 40.5,
+            cartonWidthCm: 30.25,
+            cartonHeightCm: 20,
+            cartonWeightKg: 5.5,
+          })
+          .expect(201);
+
+        expect(res.body.sku).toBe(sku);
+        expect(res.body.barcode).toBe('8938500001234');
+        expect(res.body.variantLabel).toBe('Hop qua tang');
+        expect(res.body.unitsPerInnerBox).toBe(6);
+        expect(res.body.unitsPerMasterCarton).toBe(24);
+        expect(res.body.cartonLengthCm).toBe(40.5);
+        expect(res.body.cartonWidthCm).toBe(30.25);
+        expect(res.body.cartonHeightCm).toBe(20);
+        expect(res.body.cartonWeightKg).toBe(5.5);
+      });
+
+      it('12. rejects a duplicate sku (409 SKU_TAKEN)', async () => {
+        const sku = `KT-DUPE-${uniqueEmail('v').split('@')[0]!.slice(0, 8).toUpperCase()}`;
+        await request(server)
+          .post(`/api/admin/products/${productId}/variants`)
+          .set('Authorization', `Bearer ${contentToken}`)
+          .send({ sku })
+          .expect(201);
+
+        const res = await request(server)
+          .post(`/api/admin/products/${productId}/variants`)
+          .set('Authorization', `Bearer ${contentToken}`)
+          .send({ sku })
+          .expect(409);
+        expect(res.body.message).toBe('SKU_TAKEN');
+      });
+
+      it('13. rejects a duplicate barcode (409 BARCODE_TAKEN)', async () => {
+        const barcode = '8938500009999';
+        const sku1 = `KT-BC1-${uniqueEmail('v').split('@')[0]!.slice(0, 8).toUpperCase()}`;
+        await request(server)
+          .post(`/api/admin/products/${productId}/variants`)
+          .set('Authorization', `Bearer ${contentToken}`)
+          .send({ sku: sku1, barcode })
+          .expect(201);
+
+        const sku2 = `KT-BC2-${uniqueEmail('v').split('@')[0]!.slice(0, 8).toUpperCase()}`;
+        const res = await request(server)
+          .post(`/api/admin/products/${productId}/variants`)
+          .set('Authorization', `Bearer ${contentToken}`)
+          .send({ sku: sku2, barcode })
+          .expect(409);
+        expect(res.body.message).toBe('BARCODE_TAKEN');
+      });
+
+      it('14. rejects unitsPerMasterCarton < unitsPerInnerBox (400)', async () => {
+        const sku = `KT-CTN-${uniqueEmail('v').split('@')[0]!.slice(0, 8).toUpperCase()}`;
+        await request(server)
+          .post(`/api/admin/products/${productId}/variants`)
+          .set('Authorization', `Bearer ${contentToken}`)
+          .send({ sku, unitsPerInnerBox: 12, unitsPerMasterCarton: 6 })
+          .expect(400);
+      });
+
+      it('15. 403 for SALES, 401 with no token', async () => {
+        const sku = `KT-RBAC-${uniqueEmail('v').split('@')[0]!.slice(0, 8).toUpperCase()}`;
+        await request(server)
+          .post(`/api/admin/products/${productId}/variants`)
+          .set('Authorization', `Bearer ${salesToken}`)
+          .send({ sku })
+          .expect(403);
+        await request(server)
+          .post(`/api/admin/products/${productId}/variants`)
+          .send({ sku })
+          .expect(401);
+      });
+    });
+
+    describe('POST /api/admin/variants/:variantId/certifications', () => {
+      let variantId: string;
+
+      beforeAll(async () => {
+        const seed = uniqueEmail('prod-cert').split('@')[0]!;
+        const product = await request(server)
+          .post('/api/admin/products')
+          .set('Authorization', `Bearer ${contentToken}`)
+          .send(baseProductBody(seed))
+          .expect(201);
+        const sku = `KT-CERT-${uniqueEmail('v').split('@')[0]!.slice(0, 8).toUpperCase()}`;
+        const variant = await request(server)
+          .post(`/api/admin/products/${product.body.id}/variants`)
+          .set('Authorization', `Bearer ${contentToken}`)
+          .send({ sku })
+          .expect(201);
+        variantId = variant.body.id as string;
+      });
+
+      it('16. persists certNumber, issuingBody, validFrom, validTo, batchLabel', async () => {
+        const res = await request(server)
+          .post(`/api/admin/variants/${variantId}/certifications`)
+          .set('Authorization', `Bearer ${contentToken}`)
+          .send({
+            certNumber: 'QCVN3:2019/BKHCN-9001',
+            issuingBody: 'QUATEST 3',
+            validFrom: '2026-01-01T00:00:00.000Z',
+            validTo: '2028-01-01T00:00:00.000Z',
+            batchLabel: 'LOT-001',
+          })
+          .expect(201);
+        expect(res.body.certNumber).toBe('QCVN3:2019/BKHCN-9001');
+        expect(res.body.batchLabel).toBe('LOT-001');
+      });
+
+      it('17. rejects validTo <= validFrom (400)', async () => {
+        await request(server)
+          .post(`/api/admin/variants/${variantId}/certifications`)
+          .set('Authorization', `Bearer ${contentToken}`)
+          .send({
+            certNumber: 'QCVN3:2019/BKHCN-9002',
+            issuingBody: 'QUATEST 3',
+            validFrom: '2028-01-01T00:00:00.000Z',
+            validTo: '2026-01-01T00:00:00.000Z',
+          })
+          .expect(400);
+      });
+
+      it('18. 403 for WAREHOUSE, 401 with no token', async () => {
+        const body = {
+          certNumber: 'QCVN3:2019/BKHCN-9003',
+          issuingBody: 'QUATEST 3',
+          validFrom: '2026-01-01T00:00:00.000Z',
+          validTo: '2028-01-01T00:00:00.000Z',
+        };
+        await request(server)
+          .post(`/api/admin/variants/${variantId}/certifications`)
+          .set('Authorization', `Bearer ${warehouseToken}`)
+          .send(body)
+          .expect(403);
+        await request(server)
+          .post(`/api/admin/variants/${variantId}/certifications`)
+          .send(body)
+          .expect(401);
+      });
+
+      it('19. SUPER_ADMIN can also create a certification (201)', async () => {
+        await request(server)
+          .post(`/api/admin/variants/${variantId}/certifications`)
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send({
+            certNumber: 'QCVN3:2019/BKHCN-9004',
+            issuingBody: 'QUATEST 3',
+            validFrom: '2026-01-01T00:00:00.000Z',
+            validTo: '2028-01-01T00:00:00.000Z',
+          })
+          .expect(201);
+      });
+    });
+  });
 });
