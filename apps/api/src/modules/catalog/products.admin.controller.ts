@@ -24,8 +24,8 @@ import { ProductsService } from './products.service';
 /**
  * Product/variant/certification admin surface (CATALOG-01, 03, 04, 05).
  * Copies the exact RBAC pattern documented in AdminProbeController:
- * class-level @UseGuards(JwtAuthGuard, RolesGuard) plus an explicit
- * @Roles('SUPER_ADMIN', 'CONTENT') on every route (T-01-33).
+ * class-level UseGuards(JwtAuthGuard, RolesGuard) plus an explicit
+ * per-route Roles('SUPER_ADMIN', 'CONTENT') decorator (T-01-33).
  */
 @ApiTags('admin-catalog')
 @ApiBearerAuth()

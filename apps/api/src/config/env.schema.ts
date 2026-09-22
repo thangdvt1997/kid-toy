@@ -29,6 +29,7 @@ export const envSchema = z.object({
 
   UPLOAD_MAX_DOCUMENT_BYTES: z.coerce.number().int().positive().default(10 * 1024 * 1024),
   UPLOAD_MAX_IMAGE_BYTES: z.coerce.number().int().positive().default(5 * 1024 * 1024),
+  UPLOAD_MAX_VIDEO_BYTES: z.coerce.number().int().positive().default(50 * 1024 * 1024),
 
   MINIO_ENDPOINT: z.string().url('MINIO_ENDPOINT must be a valid URL'),
   MINIO_ROOT_USER: z.string().min(1, 'MINIO_ROOT_USER is required'),

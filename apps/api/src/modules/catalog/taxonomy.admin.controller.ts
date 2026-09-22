@@ -11,8 +11,8 @@ import { TaxonomyService } from './taxonomy.service';
 /**
  * Bilingual category and brand management (CATALOG-09 write path). Copies
  * the exact RBAC pattern documented in AdminProbeController: class-level
- * @UseGuards(JwtAuthGuard, RolesGuard) (authentication first, then
- * authorization) plus an explicit @Roles(...) on every route — T-01-33.
+ * UseGuards(JwtAuthGuard, RolesGuard) (authentication first, then
+ * authorization) plus an explicit per-route Roles decorator — T-01-33.
  */
 @ApiTags('admin-catalog')
 @ApiBearerAuth()
