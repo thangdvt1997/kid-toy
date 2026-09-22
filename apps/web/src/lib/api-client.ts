@@ -153,8 +153,14 @@ export async function apiSend<T>(
     const { message, code } = await parseErrorBody(res);
     throw new ApiError(message, res.status, code);
   }
-  if (res.status === 204) {
+  // Several API endpoints (e.g. POST /api/auth/forgot-password) return a
+  // non-204 success status (202) with NO response body — not just 204.
+  // Reading the body as text first (rather than assuming only 204 is empty)
+  // avoids `res.json()` throwing a SyntaxError on an empty body for any
+  // other empty-bodied 2xx status.
+  const text = await res.text();
+  if (!text) {
     return undefined as T;
   }
-  return (await res.json()) as T;
+  return JSON.parse(text) as T;
 }

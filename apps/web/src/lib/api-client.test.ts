@@ -14,6 +14,10 @@ function jsonResponse(body: unknown, init: { ok?: boolean; status?: number } = {
     status: init.status ?? 200,
     statusText: init.ok === false ? "Error" : "OK",
     json: async () => body,
+    // apiSend reads the body via .text() (see api-client.ts: some success
+    // statuses like 202 have no body at all, not just 204), so the mock
+    // Response needs both methods.
+    text: async () => JSON.stringify(body),
   } as Response;
 }
 
