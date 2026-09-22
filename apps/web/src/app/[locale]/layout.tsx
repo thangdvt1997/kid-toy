@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { NextIntlClientProvider } from "next-intl";
-import { getMessages } from "next-intl/server";
+import { getMessages, getTranslations } from "next-intl/server";
 import { Geist, Geist_Mono } from "next/font/google";
 import { routing } from "@/i18n/routing";
+import SiteHeader from "@/components/SiteHeader";
 import "../globals.css";
 
 const geistSans = Geist({
@@ -15,13 +16,21 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Kid Toy",
-  description: "Kid Toy — bilingual B2C/B2B toy import-export platform",
-};
-
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "Common" });
+  return {
+    title: t("siteName"),
+    description: "Kid Toy — bilingual B2C/B2B toy import-export platform",
+  };
 }
 
 export default async function LocaleLayout({
@@ -38,6 +47,7 @@ export default async function LocaleLayout({
     <html lang={locale} className={`${geistSans.variable} ${geistMono.variable}`}>
       <body>
         <NextIntlClientProvider messages={messages}>
+          <SiteHeader />
           {children}
         </NextIntlClientProvider>
       </body>
