@@ -107,4 +107,24 @@ export interface AdminProductDto {
   media: MediaDto[];
 }
 
+// ---------------------------------------------------------------------
+// Pricing & stock (Phase 1 Plan 06 — CATALOG-06, CATALOG-08)
+// ---------------------------------------------------------------------
+
+export interface PriceTierDto {
+  id: string;
+  code: string;
+  name: string;
+  isDefault: boolean;
+}
+
+export interface PriceEntryDto {
+  id: string;
+  variantId: string;
+  tierId: string;
+  tierCode: string;
+  minQty: number;
+  unitPriceVnd: string; // VND as a decimal STRING — BigInt is not JSON-safe
+}
+
 export {};

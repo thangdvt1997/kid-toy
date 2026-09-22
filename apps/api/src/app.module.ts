@@ -7,6 +7,7 @@ import { AdminProbeController } from './modules/admin/admin-probe.controller';
 import { AuthModule } from './modules/auth/auth.module';
 import { BusinessAccountsModule } from './modules/business-accounts/business-accounts.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
+import { PricingModule } from './modules/pricing/pricing.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { PrismaModule } from './prisma/prisma.module';
 
@@ -18,6 +19,7 @@ import { PrismaModule } from './prisma/prisma.module';
     AuthModule,
     BusinessAccountsModule,
     CatalogModule,
+    PricingModule,
     ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 120 }]),
   ],
   controllers: [HealthController, AdminProbeController],
