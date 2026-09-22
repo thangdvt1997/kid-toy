@@ -159,6 +159,11 @@ export function toCatalogProductDetail(
   }
   const localeFallbackApplied = !wanted;
 
+  const otherPrismaLocale = prismaLocale === 'VI' ? 'EN' : 'VI';
+  const alternateLocaleSlug =
+    product.translations.find((t) => t.locale === otherPrismaLocale)?.slug ??
+    null;
+
   const categoryTranslation = product.category.translations[0];
   const sortedVariants = sortBySku(product.variants);
   const firstVariant = sortedVariants[0];
@@ -213,5 +218,6 @@ export function toCatalogProductDetail(
         }
       : null,
     ...(localeFallbackApplied ? { localeFallbackApplied: true } : {}),
+    alternateLocaleSlug,
   };
 }

@@ -186,6 +186,13 @@ export interface CatalogProductDetail extends CatalogListItem {
   } | null;
   /** Set only when the requested locale's translation row was entirely absent and the `vi` row was used instead. */
   localeFallbackApplied?: boolean;
+  /**
+   * This same product's slug in the OTHER locale (vi<->en), or null if that
+   * locale somehow has no translation row. Slugs are per-locale (CATALOG-09)
+   * — a locale switcher on a product detail page must link here, never
+   * reuse the current locale's slug under the other locale's path.
+   */
+  alternateLocaleSlug: string | null;
 }
 
 export interface FacetOption {

@@ -7,6 +7,7 @@ import { Link } from "@/i18n/navigation";
 import { formatAgeRange } from "@/lib/format";
 import PriceTag from "@/components/PriceTag";
 import StockBadge from "@/components/StockBadge";
+import { SyncProductLocaleSlugs } from "@/lib/product-locale-context";
 
 export const dynamic = "force-dynamic";
 
@@ -72,8 +73,17 @@ export default async function ProductDetailPage({
     packaging?.cartonWidthCm != null &&
     packaging?.cartonHeightCm != null;
 
+  const otherLocale: Locale = locale === "vi" ? "en" : "vi";
+  const localeSlugs = product.alternateLocaleSlug
+    ? ({ [locale]: product.slug, [otherLocale]: product.alternateLocaleSlug } as Record<
+        Locale,
+        string
+      >)
+    : null;
+
   return (
     <main>
+      <SyncProductLocaleSlugs slugs={localeSlugs} />
       <h1>{product.name}</h1>
 
       {product.localeFallbackApplied ? <p role="note">{t("localeFallbackNotice")}</p> : null}

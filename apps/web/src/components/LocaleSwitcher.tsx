@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Link, usePathname } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
+import { useProductLocaleSlugs } from "@/lib/product-locale-context";
 
 const LOCALE_LABEL_KEY: Record<(typeof routing.locales)[number], "vietnamese" | "english"> = {
   vi: "vietnamese",
@@ -22,7 +23,12 @@ export default function LocaleSwitcher() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const query = searchParams.toString();
-  const href = query ? `${pathname}?${query}` : pathname;
+  const defaultHref = query ? `${pathname}?${query}` : pathname;
+  // Set only on a product detail page (SyncProductLocaleSlugs) — slugs are
+  // per-locale (CATALOG-09), so naively re-prefixing the current path with
+  // another locale 404s there. Everywhere else this is null and the naive
+  // path swap above is correct.
+  const productSlugs = useProductLocaleSlugs();
   const t = useTranslations("Common");
 
   return (
@@ -30,7 +36,7 @@ export default function LocaleSwitcher() {
       {routing.locales.map((locale) => (
         <Link
           key={locale}
-          href={href}
+          href={productSlugs ? `/catalog/${productSlugs[locale]}` : defaultHref}
           locale={locale}
           aria-current={locale === currentLocale ? "true" : undefined}
         >
