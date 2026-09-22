@@ -643,4 +643,315 @@ describe('Catalog Admin (e2e)', () => {
       });
     });
   });
+
+  // -----------------------------------------------------------------
+  // Media (Task 3) — CATALOG-02
+  // -----------------------------------------------------------------
+  describe('media', () => {
+    let contentToken: string;
+    let salesToken: string;
+    let warehouseToken: string;
+    let productId: string;
+
+    /** A real, complete, minimal 1x1 JPEG — file-type parses real JPEG markers, not just SOI bytes. */
+    function jpegBuffer(): Buffer {
+      return Buffer.from(
+        '/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAMCAgICAgMCAgIDAwMDBAYEBAQEBAgGBgUGCQgKCgkICQkKDA8MCgsOCwkJDRENDg8QEBEQCgwSExIQEw8QEBD/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACP/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AVN//2Q==',
+        'base64',
+      );
+    }
+
+    /** A real minimal MP4 ftyp box — file-type parses the box structure, not just leading bytes. */
+    function mp4Buffer(): Buffer {
+      return Buffer.concat([
+        Buffer.from([0x00, 0x00, 0x00, 0x20]), // box size = 32
+        Buffer.from('ftyp', 'ascii'),
+        Buffer.from('isom', 'ascii'), // major brand
+        Buffer.from([0x00, 0x00, 0x02, 0x00]), // minor version
+        Buffer.from('isom', 'ascii'),
+        Buffer.from('iso2', 'ascii'),
+        Buffer.from('avc1', 'ascii'),
+        Buffer.from('mp41', 'ascii'),
+      ]);
+    }
+
+    function pdfBuffer(): Buffer {
+      return Buffer.from('%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\ntrailer\n%%EOF');
+    }
+
+    beforeAll(async () => {
+      contentToken = await loginAs('content@kidtoy.local');
+      salesToken = await loginAs('sales@kidtoy.local');
+      warehouseToken = await loginAs('warehouse@kidtoy.local');
+
+      const catSeed = uniqueEmail('media-cat').split('@')[0]!;
+      const cat = await request(server)
+        .post('/api/admin/categories')
+        .set('Authorization', `Bearer ${contentToken}`)
+        .send({ translations: bothLocaleTranslations(catSeed) })
+        .expect(201);
+
+      const prodSeed = uniqueEmail('media-prod').split('@')[0]!;
+      const product = await request(server)
+        .post('/api/admin/products')
+        .set('Authorization', `Bearer ${contentToken}`)
+        .send({
+          categoryId: cat.body.id,
+          ageRangeMin: 3,
+          ageRangeMax: 6,
+          gender: 'UNISEX',
+          origin: 'VN',
+          channelScope: 'BOTH',
+          translations: [
+            { locale: 'vi', name: `Ten ${prodSeed}`, slug: `m-vi-${prodSeed}` },
+            { locale: 'en', name: `Name ${prodSeed}`, slug: `m-en-${prodSeed}` },
+          ],
+        })
+        .expect(201);
+      productId = product.body.id as string;
+    });
+
+    describe('POST /api/admin/products/:id/media', () => {
+      it('1. uploads a JPEG image (201), objectKey starts with product-media/ and contains a UUID', async () => {
+        const res = await request(server)
+          .post(`/api/admin/products/${productId}/media`)
+          .set('Authorization', `Bearer ${contentToken}`)
+          .field('type', 'IMAGE')
+          .attach('file', jpegBuffer(), 'photo.jpg')
+          .expect(201);
+
+        expect(res.body.type).toBe('IMAGE');
+        expect(res.body.url).toContain('X-Amz-Signature');
+        expect(res.body.objectKey).toBeUndefined();
+
+        const row = await prisma.productMedia.findUniqueOrThrow({ where: { id: res.body.id } });
+        expect(row.objectKey).toMatch(
+          /^product-media\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.jpg$/,
+        );
+      });
+
+      it('2. three sequential uploads to the same product get sortOrder 0, 1, 2', async () => {
+        const seed = uniqueEmail('media-order').split('@')[0]!;
+        const cat = await request(server)
+          .post('/api/admin/categories')
+          .set('Authorization', `Bearer ${contentToken}`)
+          .send({ translations: bothLocaleTranslations(seed) })
+          .expect(201);
+        const product = await request(server)
+          .post('/api/admin/products')
+          .set('Authorization', `Bearer ${contentToken}`)
+          .send({
+            categoryId: cat.body.id,
+            ageRangeMin: 3,
+            ageRangeMax: 6,
+            gender: 'UNISEX',
+            origin: 'VN',
+            channelScope: 'BOTH',
+            translations: [
+              { locale: 'vi', name: `Ten ${seed}`, slug: `mo-vi-${seed}` },
+              { locale: 'en', name: `Name ${seed}`, slug: `mo-en-${seed}` },
+            ],
+          })
+          .expect(201);
+        const pid = product.body.id as string;
+
+        const orders: number[] = [];
+        for (let i = 0; i < 3; i += 1) {
+          const res = await request(server)
+            .post(`/api/admin/products/${pid}/media`)
+            .set('Authorization', `Bearer ${contentToken}`)
+            .field('type', 'IMAGE')
+            .attach('file', jpegBuffer(), `photo-${i}.jpg`)
+            .expect(201);
+          orders.push(res.body.sortOrder as number);
+        }
+        expect(orders).toEqual([0, 1, 2]);
+      });
+
+      it('3. accepts video/mp4 for type=VIDEO', async () => {
+        const res = await request(server)
+          .post(`/api/admin/products/${productId}/media`)
+          .set('Authorization', `Bearer ${contentToken}`)
+          .field('type', 'VIDEO')
+          .attach('file', mp4Buffer(), { filename: 'clip.mp4', contentType: 'video/mp4' })
+          .expect(201);
+        expect(res.body.type).toBe('VIDEO');
+      });
+
+      it('4. rejects an image mimetype submitted as type=VIDEO (400)', async () => {
+        await request(server)
+          .post(`/api/admin/products/${productId}/media`)
+          .set('Authorization', `Bearer ${contentToken}`)
+          .field('type', 'VIDEO')
+          .attach('file', jpegBuffer(), 'photo.jpg')
+          .expect(400);
+      });
+
+      it('5. rejects application/pdf for both IMAGE and VIDEO (400)', async () => {
+        await request(server)
+          .post(`/api/admin/products/${productId}/media`)
+          .set('Authorization', `Bearer ${contentToken}`)
+          .field('type', 'IMAGE')
+          .attach('file', pdfBuffer(), 'doc.pdf')
+          .expect(400);
+        await request(server)
+          .post(`/api/admin/products/${productId}/media`)
+          .set('Authorization', `Bearer ${contentToken}`)
+          .field('type', 'VIDEO')
+          .attach('file', pdfBuffer(), 'doc.pdf')
+          .expect(400);
+      });
+
+      it('6. rejects an oversized image (400)', async () => {
+        const oversized = Buffer.concat([jpegBuffer(), Buffer.alloc(6 * 1024 * 1024, 0)]);
+        await request(server)
+          .post(`/api/admin/products/${productId}/media`)
+          .set('Authorization', `Bearer ${contentToken}`)
+          .field('type', 'IMAGE')
+          .attach('file', oversized, 'big.jpg')
+          .expect(400);
+      });
+
+      it('7. uploading to a non-existent product returns 404', async () => {
+        await request(server)
+          .post('/api/admin/products/does-not-exist/media')
+          .set('Authorization', `Bearer ${contentToken}`)
+          .field('type', 'IMAGE')
+          .attach('file', jpegBuffer(), 'photo.jpg')
+          .expect(404);
+      });
+
+      it('8. 403 for SALES/WAREHOUSE, 401 with no token', async () => {
+        await request(server)
+          .post(`/api/admin/products/${productId}/media`)
+          .set('Authorization', `Bearer ${salesToken}`)
+          .field('type', 'IMAGE')
+          .attach('file', jpegBuffer(), 'photo.jpg')
+          .expect(403);
+        await request(server)
+          .post(`/api/admin/products/${productId}/media`)
+          .set('Authorization', `Bearer ${warehouseToken}`)
+          .field('type', 'IMAGE')
+          .attach('file', jpegBuffer(), 'photo.jpg')
+          .expect(403);
+        await request(server)
+          .post(`/api/admin/products/${productId}/media`)
+          .field('type', 'IMAGE')
+          .attach('file', jpegBuffer(), 'photo.jpg')
+          .expect(401);
+      });
+    });
+
+    describe('PATCH /api/admin/products/:id/media/order', () => {
+      let orderProductId: string;
+      let mediaIds: string[];
+
+      beforeAll(async () => {
+        const seed = uniqueEmail('media-reorder').split('@')[0]!;
+        const cat = await request(server)
+          .post('/api/admin/categories')
+          .set('Authorization', `Bearer ${contentToken}`)
+          .send({ translations: bothLocaleTranslations(seed) })
+          .expect(201);
+        const product = await request(server)
+          .post('/api/admin/products')
+          .set('Authorization', `Bearer ${contentToken}`)
+          .send({
+            categoryId: cat.body.id,
+            ageRangeMin: 3,
+            ageRangeMax: 6,
+            gender: 'UNISEX',
+            origin: 'VN',
+            channelScope: 'BOTH',
+            translations: [
+              { locale: 'vi', name: `Ten ${seed}`, slug: `ro-vi-${seed}` },
+              { locale: 'en', name: `Name ${seed}`, slug: `ro-en-${seed}` },
+            ],
+          })
+          .expect(201);
+        orderProductId = product.body.id as string;
+
+        mediaIds = [];
+        for (let i = 0; i < 3; i += 1) {
+          const res = await request(server)
+            .post(`/api/admin/products/${orderProductId}/media`)
+            .set('Authorization', `Bearer ${contentToken}`)
+            .field('type', 'IMAGE')
+            .attach('file', jpegBuffer(), `photo-${i}.jpg`)
+            .expect(201);
+          mediaIds.push(res.body.id as string);
+        }
+      });
+
+      it('9. reorders with the full reversed id set', async () => {
+        const reversed = [...mediaIds].reverse();
+        const res = await request(server)
+          .patch(`/api/admin/products/${orderProductId}/media/order`)
+          .set('Authorization', `Bearer ${contentToken}`)
+          .send({ orderedIds: reversed })
+          .expect(200);
+        expect((res.body as Array<{ id: string; sortOrder: number }>).map((m) => m.id)).toEqual(
+          reversed,
+        );
+      });
+
+      it('10. rejects a partial id set (400)', async () => {
+        await request(server)
+          .patch(`/api/admin/products/${orderProductId}/media/order`)
+          .set('Authorization', `Bearer ${contentToken}`)
+          .send({ orderedIds: [mediaIds[0]] })
+          .expect(400);
+      });
+
+      it('11. rejects a duplicate id (400)', async () => {
+        await request(server)
+          .patch(`/api/admin/products/${orderProductId}/media/order`)
+          .set('Authorization', `Bearer ${contentToken}`)
+          .send({ orderedIds: [mediaIds[0], mediaIds[0], mediaIds[1]] })
+          .expect(400);
+      });
+
+      it('12. rejects an id belonging to another product (400)', async () => {
+        await request(server)
+          .patch(`/api/admin/products/${orderProductId}/media/order`)
+          .set('Authorization', `Bearer ${contentToken}`)
+          .send({ orderedIds: [mediaIds[0]!, mediaIds[1]!, 'foreign-id'] })
+          .expect(400);
+      });
+    });
+
+    describe('DELETE /api/admin/media/:mediaId', () => {
+      it('13. deletes the row (204) and the row no longer exists', async () => {
+        const res = await request(server)
+          .post(`/api/admin/products/${productId}/media`)
+          .set('Authorization', `Bearer ${contentToken}`)
+          .field('type', 'IMAGE')
+          .attach('file', jpegBuffer(), 'to-delete.jpg')
+          .expect(201);
+
+        await request(server)
+          .delete(`/api/admin/media/${res.body.id}`)
+          .set('Authorization', `Bearer ${contentToken}`)
+          .expect(204);
+
+        const row = await prisma.productMedia.findUnique({ where: { id: res.body.id as string } });
+        expect(row).toBeNull();
+      });
+
+      it('14. 403 for WAREHOUSE, 401 with no token', async () => {
+        const res = await request(server)
+          .post(`/api/admin/products/${productId}/media`)
+          .set('Authorization', `Bearer ${contentToken}`)
+          .field('type', 'IMAGE')
+          .attach('file', jpegBuffer(), 'rbac.jpg')
+          .expect(201);
+
+        await request(server)
+          .delete(`/api/admin/media/${res.body.id}`)
+          .set('Authorization', `Bearer ${warehouseToken}`)
+          .expect(403);
+        await request(server).delete(`/api/admin/media/${res.body.id}`).expect(401);
+      });
+    });
+  });
 });
