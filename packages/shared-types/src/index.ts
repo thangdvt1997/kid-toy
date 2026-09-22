@@ -127,4 +127,11 @@ export interface PriceEntryDto {
   unitPriceVnd: string; // VND as a decimal STRING — BigInt is not JSON-safe
 }
 
+export interface VariantStockDto {
+  variantId: string;
+  quantityOnHand: number;
+  reorderThreshold: number;
+  status: StockStatus;
+}
+
 export {};
