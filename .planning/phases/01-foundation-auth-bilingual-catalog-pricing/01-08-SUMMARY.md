@@ -198,6 +198,14 @@ None — `.env.local.example` documents the two variables (`NEXT_PUBLIC_API_URL`
 
 All 18 created files (api-client.ts/.test.ts, session.ts, format.ts/.test.ts, LocaleSwitcher.tsx/.test.tsx, SiteHeader.tsx, StockBadge.tsx, PriceTag.tsx, CatalogFilters.tsx, ProductCard.tsx, catalog/page.tsx, catalog/[slug]/page.tsx, catalog/[slug]/not-found.tsx, jest.config.ts, jest.setup.ts, .env.local.example) verified present on disk; all 3 task commits (`94da4e2`, `228c5e3`, `7b93640`) verified present in `git log`.
 
+## Orchestrator: Live Visual Verification (VPS)
+
+Booted `apps/api` + `apps/web` against the real VPS Docker stack (both bound to `127.0.0.1` only — never exposed publicly) and viewed the running site through an SSH port-forward. Catalog listing, facet filters, product detail (variants, carton spec, safety certification), and bilingual content all render correctly with real seeded data.
+
+**One real bug found and fixed** (`e9f60ed`): the header's `LocaleSwitcher` naively re-prefixed the current URL's locale segment, which 404'd on every product detail page because slugs are per-locale (CATALOG-09) — `/en/catalog/<vi-slug>` doesn't exist. Fixed by having the public catalog API's product-detail response include the product's slug in the other locale (`alternateLocaleSlug`), and a small client-side context (`ProductLocaleSlugProvider`/`SyncProductLocaleSlugs`) that lets the product page tell the global switcher which slug to use per locale, clearing itself on unmount so it never leaks into unrelated pages. Verified both directions (vi→en, en→vi) render the correct product. Catalog listing/home switcher (no locale-specific slug in the URL) was never affected — verified no regression.
+
+Backend regression re-confirmed after the fix: 156/156 e2e tests still green.
+
 ---
 *Phase: 01-foundation-auth-bilingual-catalog-pricing*
 *Completed: 2026-09-22*
