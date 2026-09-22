@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-09-21)
 ## Current Position
 
 Phase: 1 of 7 (Foundation — Auth, Bilingual Catalog & Pricing)
-Plan: 9 of 11 complete in current phase — remaining: 01-10-PLAN.md (staff admin UI), 01-11-PLAN.md (VPS deploy: docker-compose.prod.yml + Caddy/HTTPS)
+Plan: 9 of 12 complete in current phase — remaining: 01-09A-PLAN.md (auth/session hardening and test separation), 01-10-PLAN.md (staff admin UI), 01-11-PLAN.md (VPS deploy: docker-compose.prod.yml + Caddy/HTTPS)
 Status: In Progress
 Last activity: 2026-09-22 — Plan 09 (browser-reachable auth UI: login/register/forgot-password/reset-password) complete, committed (`f1e5b85`), and live-verified against the real VPS Docker stack (typecheck clean across all 3 packages; backend regression 156/156 e2e still green)
 
-Progress: [████████░░] 9/11 plans (82%)
+Progress: [███████░░░] 9/12 plans (75%)
 
 Every completed plan (01–09) has been verified against the LIVE VPS Docker stack (not just static/mocked tests) — see each `01-0N-SUMMARY.md`'s "Orchestrator" verification notes and .claude/projects/D--Work/memory/project_kid_toy_ecommerce.md for the running list of real bugs this caught (Docker Hub image change, missing @HttpCode decorators, non-unique JWTs, ES2023 class-field/whitelist interaction, unsafe test slug seeds, missing --experimental-vm-modules flag, cross-locale slug navigation).
 
@@ -31,7 +31,7 @@ Phase 2 (Multi-Warehouse Batch-Tracked Inventory Core) research is already done 
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 1 | 9/11 | - | ~50 min |
+| 1 | 9/12 | - | ~50 min |
 
 **Recent Trend:**
 - Last 5 plans (05-09): all landed with 0-4 real bugs each, caught and fixed via live VPS testing before moving on
@@ -63,6 +63,7 @@ None yet.
 - [Phase 3/5]: MoMo/ZaloPay have no trustworthy first-party npm SDK — VNPay only for v1 payment gateway; direct REST+HMAC needed if MoMo/ZaloPay added later (v2, PAY-01).
 - [Phase 5]: Landed-cost allocation formula (by value/weight/volume) needs a concrete spec decision before implementation; simple-average accepted for v1.
 - [Phase 4]: Credit-limit breach behavior (hard block vs. sales-rep approval queue) needs resolution before building B2B-10.
+- [Phase 1, before Plan 10]: Execute `01-09A-PLAN.md` to fix render-time cookie writes, unvalidated post-login `next`, and incorrect proxy pathname forwarding; separate the database-backed pricing spec from the default unit-test command. On 2026-09-22 the VPS baseline was API unit 129/129, API e2e 156/156, web unit 16/16, and web build green. These tests do not exercise the three web defects.
 
 ## Deferred Items
 
@@ -75,7 +76,7 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: 2026-09-22
-Stopped at: Phase 1 Plan 09 complete and live-verified; user asked to save state and pause for an account switch before continuing.
-Resume file: None — resume via `/gsd:execute-phase 1` (or equivalent: spawn a gsd-executor for `01-10-PLAN.md`) then repeat the established push→VPS-pull→live-test→fix-forward loop before starting `01-11-PLAN.md` (VPS deploy).
+Stopped at: Phase 1 Plan 09 complete and live-verified; a follow-up review and VPS test pass identified an auth/session hardening step before admin UI.
+Resume file: `01-09A-PLAN.md` — execute and VPS-verify it before `01-10-PLAN.md`, then continue to `01-11-PLAN.md` (VPS deploy).
 
-**VPS state at handoff:** `/root/test/kid-toy` on `69.197.177.130` is at commit `f1e5b85` (matches GitHub `main`). Data-stack containers (`kid-toy-postgres-1`, `kid-toy-minio-1`, `kid-toy-redis-1`) are running and healthy, bound to `127.0.0.1` only. No preview/live app containers are running (deliberately torn down at handoff — see memory `feedback_deploy_location` for why they should always be re-created bound to `127.0.0.1` unless the user explicitly asks otherwise, and never left running unattended).
+**VPS state at handoff:** `/root/test/kid-toy` on `69.197.177.130` was observed at commit `4404ae4` on 2026-09-22. Data-stack containers (`kid-toy-postgres-1`, `kid-toy-minio-1`, `kid-toy-redis-1`) were healthy and bound to `127.0.0.1` only. VPS working tree had pre-existing `package.json` changes and an untracked `.pnpm-store/`; the review did not modify them. No preview/live app containers were started for this review.

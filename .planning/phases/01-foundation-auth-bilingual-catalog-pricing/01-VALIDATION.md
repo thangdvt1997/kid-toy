@@ -45,8 +45,9 @@ created: 2026-09-21
 | 01-06-* | 06 | 6 | CATALOG-06, CATALOG-08 | V4 | Viewer-aware price resolution; stock-status derivation | unit | `pnpm --filter api test -- price-resolution.service.spec.ts variant-stock.service.spec.ts` | ❌ W0 | ⬜ pending |
 | 01-07-* | 07 | 7 | CATALOG-06, CATALOG-07, CATALOG-08, CATALOG-09 | V5 | Catalog filter/read API, locale fallback | integration | `pnpm --filter api test -- catalog.controller.spec.ts` | ❌ W0 | ⬜ pending |
 | 01-09-* | 09 | 9 | AUTH-01, AUTH-02, AUTH-03, AUTH-05, CATALOG-06 | V6 | End-to-end auth e2e (login/register/reset), httpOnly cookie handling | e2e | `pnpm --filter api test:e2e -- auth.e2e-spec.ts business-account.e2e-spec.ts password-reset.e2e-spec.ts` | ❌ W0 | ⬜ pending |
-| 01-10-* | 10 | 10 | AUTH-03, AUTH-04, CATALOG-01..06, CATALOG-08, CATALOG-09 | V4/V6 | Admin CRUD round-trip, RBAC 401/403/200 matrix | e2e | `pnpm --filter api test:e2e -- catalog-admin.e2e-spec.ts roles.e2e-spec.ts` | ❌ W0 | ⬜ pending |
-| 01-11-* | 11 | 11 | AUTH-01, CATALOG-07, CATALOG-09 | V6 | Deployed-build smoke test (9 cases) proves AUTH-01/CATALOG-06/07/09 on live VPS | smoke (manual + scripted) | 9-case smoke script per Plan 11 | ❌ W0 | ⬜ pending |
+| 01-09A-* | 09A | 10 | AUTH-01, AUTH-04, CATALOG-06 | V4/V6 | Expired-session renewal, safe `next`, upstream pathname, isolated test database | web HTTP/e2e + API integration | Web auth-session regression suite; API pricing integration against `kidtoy_test` | ❌ W0 | ⬜ pending |
+| 01-10-* | 10 | 11 | AUTH-03, AUTH-04, CATALOG-01..06, CATALOG-08, CATALOG-09 | V4/V6 | Admin CRUD round-trip, RBAC 401/403/200 matrix | e2e | `pnpm --filter api test:e2e -- catalog-admin.e2e-spec.ts roles.e2e-spec.ts` | ❌ W0 | ⬜ pending |
+| 01-11-* | 11 | 12 | AUTH-01, CATALOG-07, CATALOG-09 | V6 | Deployed-build smoke test (9 cases) proves AUTH-01/CATALOG-06/07/09 on live VPS | smoke (manual + scripted) | 9-case smoke script per Plan 11 | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
