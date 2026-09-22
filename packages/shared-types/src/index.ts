@@ -34,4 +34,77 @@ export interface AuthTokens {
   refreshToken: string;
 }
 
+// ---------------------------------------------------------------------
+// Catalog (Phase 1 Plan 05 — CATALOG-01..05, 09)
+// ---------------------------------------------------------------------
+
+export interface TranslationInput {
+  locale: "vi" | "en";
+  name: string;
+  slug: string;
+  description?: string;
+}
+
+export interface BrandDto {
+  id: string;
+  name: string;
+  originCountry: string | null;
+}
+
+export interface CategoryDto {
+  id: string;
+  parentId: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  translations: Record<"vi" | "en", { name: string; slug: string }>;
+}
+
+export interface CertificationDto {
+  id: string;
+  certNumber: string;
+  issuingBody: string;
+  validFrom: string;
+  validTo: string;
+  batchLabel: string | null;
+}
+
+export interface MediaDto {
+  id: string;
+  type: "IMAGE" | "VIDEO";
+  url: string;
+  altTextVi: string | null;
+  altTextEn: string | null;
+  sortOrder: number;
+}
+
+export interface AdminVariantDto {
+  id: string;
+  sku: string;
+  barcode: string | null;
+  variantLabel: string | null;
+  unitsPerInnerBox: number | null;
+  unitsPerMasterCarton: number | null;
+  cartonLengthCm: number | null;
+  cartonWidthCm: number | null;
+  cartonHeightCm: number | null;
+  cartonWeightKg: number | null;
+  isActive: boolean;
+  certifications: CertificationDto[];
+}
+
+export interface AdminProductDto {
+  id: string;
+  categoryId: string;
+  brandId: string | null;
+  ageRangeMin: number;
+  ageRangeMax: number;
+  gender: "BOY" | "GIRL" | "UNISEX";
+  origin: string;
+  channelScope: "RETAIL_ONLY" | "WHOLESALE_ONLY" | "BOTH";
+  isActive: boolean;
+  translations: Record<"vi" | "en", { name: string; slug: string; description: string | null }>;
+  variants: AdminVariantDto[];
+  media: MediaDto[];
+}
+
 export {};
