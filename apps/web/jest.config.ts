@@ -23,11 +23,17 @@ const moduleNameMapper = {
   "^@/(.*)$": "<rootDir>/src/$1",
 };
 
+// `next build`'s standalone output copies this package's own package.json
+// into .next/standalone/apps/web/package.json; without this, Jest's haste
+// module map sees two files both named "web" and warns on every run.
+const modulePathIgnorePatterns = ["<rootDir>/.next/"];
+
 const nodeProject = createJestConfig({
   displayName: "node",
   testEnvironment: "node",
   testMatch: ["<rootDir>/src/lib/**/*.test.ts"],
   moduleNameMapper,
+  modulePathIgnorePatterns,
 });
 
 const jsdomProject = createJestConfig({
@@ -36,6 +42,7 @@ const jsdomProject = createJestConfig({
   setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
   testMatch: ["<rootDir>/src/components/**/*.test.tsx"],
   moduleNameMapper,
+  modulePathIgnorePatterns,
 });
 
 const config = async (): Promise<Config> => ({
