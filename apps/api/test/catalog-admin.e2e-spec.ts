@@ -1,7 +1,8 @@
+import { randomUUID } from 'node:crypto';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import type { App } from 'supertest/types';
-import { createTestApp, resetAndSeed, uniqueEmail } from './utils/test-app';
+import { createTestApp, resetAndSeed } from './utils/test-app';
 import type { PrismaService } from '../src/prisma/prisma.service';
 
 const SEED_PASSWORD = process.env.SEED_DEFAULT_PASSWORD as string;
@@ -31,6 +32,18 @@ describe('Catalog Admin (e2e)', () => {
     return (res.body as { accessToken: string }).accessToken;
   }
 
+  /**
+   * A URL-safe, collision-free seed for slugs/names in this file.
+   * `uniqueEmail()`'s `prefix+<uuid>@test.local` shape is right for an
+   * account email but NOT for a slug: the `+` it contains fails
+   * UpsertTranslationDto's `^[a-z0-9]+(?:-[a-z0-9]+)*$` slug pattern, which
+   * 400'd every single test in this file that built a slug from it (found
+   * via a live e2e run against the VPS stack).
+   */
+  function slugSeed(prefix: string): string {
+    return `${prefix}-${randomUUID().slice(0, 8)}`;
+  }
+
   function bothLocaleTranslations(seed: string) {
     return [
       { locale: 'vi', name: `Ten ${seed}`, slug: `slug-vi-${seed}` },
@@ -56,7 +69,7 @@ describe('Catalog Admin (e2e)', () => {
 
     describe('POST /api/admin/categories', () => {
       it('1. creates a category with both vi + en translations (201) and exactly 2 translation rows', async () => {
-        const seed = uniqueEmail('cat').split('@')[0]!;
+        const seed = slugSeed('cat');
         const res = await request(server)
           .post('/api/admin/categories')
           .set('Authorization', `Bearer ${contentToken}`)
@@ -73,7 +86,7 @@ describe('Catalog Admin (e2e)', () => {
       });
 
       it('2. rejects a vi-only translations array (400 BOTH_LOCALES_REQUIRED)', async () => {
-        const seed = uniqueEmail('cat-vi-only').split('@')[0]!;
+        const seed = slugSeed('cat-vi-only');
         const res = await request(server)
           .post('/api/admin/categories')
           .set('Authorization', `Bearer ${contentToken}`)
@@ -83,7 +96,7 @@ describe('Catalog Admin (e2e)', () => {
       });
 
       it('3. rejects a duplicate-locale translations array (400)', async () => {
-        const seed = uniqueEmail('cat-dup-locale').split('@')[0]!;
+        const seed = slugSeed('cat-dup-locale');
         await request(server)
           .post('/api/admin/categories')
           .set('Authorization', `Bearer ${contentToken}`)
@@ -97,7 +110,7 @@ describe('Catalog Admin (e2e)', () => {
       });
 
       it('4. rejects a duplicate en slug within the same locale (409)', async () => {
-        const seed = uniqueEmail('cat-slug-dup').split('@')[0]!;
+        const seed = slugSeed('cat-slug-dup');
         await request(server)
           .post('/api/admin/categories')
           .set('Authorization', `Bearer ${contentToken}`)
@@ -117,7 +130,7 @@ describe('Catalog Admin (e2e)', () => {
       });
 
       it('5. allows the SAME slug string across different locales (per-locale uniqueness)', async () => {
-        const shared = `shared-${uniqueEmail('x').split('@')[0]}`;
+        const shared = `shared-${slugSeed('x')}`;
         await request(server)
           .post('/api/admin/categories')
           .set('Authorization', `Bearer ${contentToken}`)
@@ -145,7 +158,7 @@ describe('Catalog Admin (e2e)', () => {
       });
 
       it('6. rejects a non-existent parentId (400 PARENT_NOT_FOUND)', async () => {
-        const seed = uniqueEmail('cat-parent').split('@')[0]!;
+        const seed = slugSeed('cat-parent');
         const res = await request(server)
           .post('/api/admin/categories')
           .set('Authorization', `Bearer ${contentToken}`)
@@ -155,27 +168,27 @@ describe('Catalog Admin (e2e)', () => {
       });
 
       it('7. 403 for SALES and WAREHOUSE, 401 with no token, 201 for SUPER_ADMIN', async () => {
-        const seed1 = uniqueEmail('cat-sales').split('@')[0]!;
+        const seed1 = slugSeed('cat-sales');
         await request(server)
           .post('/api/admin/categories')
           .set('Authorization', `Bearer ${salesToken}`)
           .send({ translations: bothLocaleTranslations(seed1) })
           .expect(403);
 
-        const seed2 = uniqueEmail('cat-wh').split('@')[0]!;
+        const seed2 = slugSeed('cat-wh');
         await request(server)
           .post('/api/admin/categories')
           .set('Authorization', `Bearer ${warehouseToken}`)
           .send({ translations: bothLocaleTranslations(seed2) })
           .expect(403);
 
-        const seed3 = uniqueEmail('cat-noauth').split('@')[0]!;
+        const seed3 = slugSeed('cat-noauth');
         await request(server)
           .post('/api/admin/categories')
           .send({ translations: bothLocaleTranslations(seed3) })
           .expect(401);
 
-        const seed4 = uniqueEmail('cat-admin').split('@')[0]!;
+        const seed4 = slugSeed('cat-admin');
         await request(server)
           .post('/api/admin/categories')
           .set('Authorization', `Bearer ${adminToken}`)
@@ -186,7 +199,7 @@ describe('Catalog Admin (e2e)', () => {
 
     describe('PATCH /api/admin/categories/:id', () => {
       it('8. rejects pointing a category at itself (400 CATEGORY_CANNOT_PARENT_ITSELF)', async () => {
-        const seed = uniqueEmail('cat-self').split('@')[0]!;
+        const seed = slugSeed('cat-self');
         const created = await request(server)
           .post('/api/admin/categories')
           .set('Authorization', `Bearer ${contentToken}`)
@@ -224,7 +237,7 @@ describe('Catalog Admin (e2e)', () => {
 
     describe('POST /api/admin/brands', () => {
       it('11. creates a brand (201)', async () => {
-        const name = `Brand-${uniqueEmail('b').split('@')[0]}`;
+        const name = `Brand-${slugSeed('b')}`;
         const res = await request(server)
           .post('/api/admin/brands')
           .set('Authorization', `Bearer ${contentToken}`)
@@ -234,7 +247,7 @@ describe('Catalog Admin (e2e)', () => {
       });
 
       it('12. rejects a duplicate brand name (409 BRAND_NAME_TAKEN)', async () => {
-        const name = `Brand-Dup-${uniqueEmail('b').split('@')[0]}`;
+        const name = `Brand-Dup-${slugSeed('b')}`;
         await request(server)
           .post('/api/admin/brands')
           .set('Authorization', `Bearer ${contentToken}`)
@@ -250,7 +263,7 @@ describe('Catalog Admin (e2e)', () => {
       });
 
       it('13. 403 for WAREHOUSE, 401 with no token', async () => {
-        const name = `Brand-RBAC-${uniqueEmail('b').split('@')[0]}`;
+        const name = `Brand-RBAC-${slugSeed('b')}`;
         await request(server)
           .post('/api/admin/brands')
           .set('Authorization', `Bearer ${warehouseToken}`)
@@ -284,7 +297,7 @@ describe('Catalog Admin (e2e)', () => {
       salesToken = await loginAs('sales@kidtoy.local');
       warehouseToken = await loginAs('warehouse@kidtoy.local');
 
-      const seed = uniqueEmail('pv-cat').split('@')[0]!;
+      const seed = slugSeed('pv-cat');
       const cat = await request(server)
         .post('/api/admin/categories')
         .set('Authorization', `Bearer ${contentToken}`)
@@ -318,7 +331,7 @@ describe('Catalog Admin (e2e)', () => {
 
     describe('POST /api/admin/products', () => {
       it('1. creates a product with both translations (201), 2 product_translations rows', async () => {
-        const seed = uniqueEmail('prod').split('@')[0]!;
+        const seed = slugSeed('prod');
         const res = await request(server)
           .post('/api/admin/products')
           .set('Authorization', `Bearer ${contentToken}`)
@@ -334,7 +347,7 @@ describe('Catalog Admin (e2e)', () => {
       });
 
       it('2. rejects ageRangeMin > ageRangeMax (400)', async () => {
-        const seed = uniqueEmail('prod-age').split('@')[0]!;
+        const seed = slugSeed('prod-age');
         await request(server)
           .post('/api/admin/products')
           .set('Authorization', `Bearer ${contentToken}`)
@@ -343,14 +356,14 @@ describe('Catalog Admin (e2e)', () => {
       });
 
       it('3. rejects ageRangeMin < 0 or ageRangeMax > 18 (400)', async () => {
-        const seed = uniqueEmail('prod-age2').split('@')[0]!;
+        const seed = slugSeed('prod-age2');
         await request(server)
           .post('/api/admin/products')
           .set('Authorization', `Bearer ${contentToken}`)
           .send({ ...baseProductBody(seed), ageRangeMin: -1 })
           .expect(400);
 
-        const seed2 = uniqueEmail('prod-age3').split('@')[0]!;
+        const seed2 = slugSeed('prod-age3');
         await request(server)
           .post('/api/admin/products')
           .set('Authorization', `Bearer ${contentToken}`)
@@ -359,7 +372,7 @@ describe('Catalog Admin (e2e)', () => {
       });
 
       it('4. rejects a non-existent categoryId (400 CATEGORY_NOT_FOUND)', async () => {
-        const seed = uniqueEmail('prod-cat').split('@')[0]!;
+        const seed = slugSeed('prod-cat');
         const res = await request(server)
           .post('/api/admin/products')
           .set('Authorization', `Bearer ${contentToken}`)
@@ -369,7 +382,7 @@ describe('Catalog Admin (e2e)', () => {
       });
 
       it('5. rejects a non-existent brandId (400 BRAND_NOT_FOUND)', async () => {
-        const seed = uniqueEmail('prod-brand').split('@')[0]!;
+        const seed = slugSeed('prod-brand');
         const res = await request(server)
           .post('/api/admin/products')
           .set('Authorization', `Bearer ${contentToken}`)
@@ -379,7 +392,7 @@ describe('Catalog Admin (e2e)', () => {
       });
 
       it('6. rejects a missing locale (400 BOTH_LOCALES_REQUIRED)', async () => {
-        const seed = uniqueEmail('prod-locale').split('@')[0]!;
+        const seed = slugSeed('prod-locale');
         const body = baseProductBody(seed);
         await request(server)
           .post('/api/admin/products')
@@ -389,7 +402,7 @@ describe('Catalog Admin (e2e)', () => {
       });
 
       it('7. rejects a product slug colliding within the same locale (409 SLUG_TAKEN)', async () => {
-        const seed = uniqueEmail('prod-slugdup').split('@')[0]!;
+        const seed = slugSeed('prod-slugdup');
         const body = baseProductBody(seed);
         await request(server)
           .post('/api/admin/products')
@@ -397,7 +410,7 @@ describe('Catalog Admin (e2e)', () => {
           .send(body)
           .expect(201);
 
-        const seed2 = uniqueEmail('prod-slugdup2').split('@')[0]!;
+        const seed2 = slugSeed('prod-slugdup2');
         const body2 = baseProductBody(seed2);
         body2.translations[0]!.slug = body.translations[0]!.slug; // same VI slug
         await request(server)
@@ -408,7 +421,7 @@ describe('Catalog Admin (e2e)', () => {
       });
 
       it('8. 403 for SALES/WAREHOUSE, 401 with no token', async () => {
-        const seed = uniqueEmail('prod-rbac').split('@')[0]!;
+        const seed = slugSeed('prod-rbac');
         await request(server)
           .post('/api/admin/products')
           .set('Authorization', `Bearer ${salesToken}`)
@@ -425,7 +438,7 @@ describe('Catalog Admin (e2e)', () => {
 
     describe('PATCH /api/admin/products/:id', () => {
       it('9. updating only the en translation leaves the vi row untouched', async () => {
-        const seed = uniqueEmail('prod-patch').split('@')[0]!;
+        const seed = slugSeed('prod-patch');
         const created = await request(server)
           .post('/api/admin/products')
           .set('Authorization', `Bearer ${contentToken}`)
@@ -445,7 +458,7 @@ describe('Catalog Admin (e2e)', () => {
 
     describe('DELETE /api/admin/products/:id', () => {
       it('10. soft-deletes (204), row still exists with isActive=false', async () => {
-        const seed = uniqueEmail('prod-del').split('@')[0]!;
+        const seed = slugSeed('prod-del');
         const created = await request(server)
           .post('/api/admin/products')
           .set('Authorization', `Bearer ${contentToken}`)
@@ -468,7 +481,7 @@ describe('Catalog Admin (e2e)', () => {
       let productId: string;
 
       beforeAll(async () => {
-        const seed = uniqueEmail('prod-var').split('@')[0]!;
+        const seed = slugSeed('prod-var');
         const created = await request(server)
           .post('/api/admin/products')
           .set('Authorization', `Bearer ${contentToken}`)
@@ -478,7 +491,7 @@ describe('Catalog Admin (e2e)', () => {
       });
 
       it('11. persists sku, barcode, variantLabel and all five carton fields; round-trips exactly', async () => {
-        const sku = `KT-E2E-${uniqueEmail('v').split('@')[0]!.slice(0, 8).toUpperCase()}`;
+        const sku = `KT-E2E-${slugSeed('v').slice(0, 8).toUpperCase()}`;
         const res = await request(server)
           .post(`/api/admin/products/${productId}/variants`)
           .set('Authorization', `Bearer ${contentToken}`)
@@ -507,7 +520,7 @@ describe('Catalog Admin (e2e)', () => {
       });
 
       it('12. rejects a duplicate sku (409 SKU_TAKEN)', async () => {
-        const sku = `KT-DUPE-${uniqueEmail('v').split('@')[0]!.slice(0, 8).toUpperCase()}`;
+        const sku = `KT-DUPE-${slugSeed('v').slice(0, 8).toUpperCase()}`;
         await request(server)
           .post(`/api/admin/products/${productId}/variants`)
           .set('Authorization', `Bearer ${contentToken}`)
@@ -524,14 +537,14 @@ describe('Catalog Admin (e2e)', () => {
 
       it('13. rejects a duplicate barcode (409 BARCODE_TAKEN)', async () => {
         const barcode = '8938500009999';
-        const sku1 = `KT-BC1-${uniqueEmail('v').split('@')[0]!.slice(0, 8).toUpperCase()}`;
+        const sku1 = `KT-BC1-${slugSeed('v').slice(0, 8).toUpperCase()}`;
         await request(server)
           .post(`/api/admin/products/${productId}/variants`)
           .set('Authorization', `Bearer ${contentToken}`)
           .send({ sku: sku1, barcode })
           .expect(201);
 
-        const sku2 = `KT-BC2-${uniqueEmail('v').split('@')[0]!.slice(0, 8).toUpperCase()}`;
+        const sku2 = `KT-BC2-${slugSeed('v').slice(0, 8).toUpperCase()}`;
         const res = await request(server)
           .post(`/api/admin/products/${productId}/variants`)
           .set('Authorization', `Bearer ${contentToken}`)
@@ -541,7 +554,7 @@ describe('Catalog Admin (e2e)', () => {
       });
 
       it('14. rejects unitsPerMasterCarton < unitsPerInnerBox (400)', async () => {
-        const sku = `KT-CTN-${uniqueEmail('v').split('@')[0]!.slice(0, 8).toUpperCase()}`;
+        const sku = `KT-CTN-${slugSeed('v').slice(0, 8).toUpperCase()}`;
         await request(server)
           .post(`/api/admin/products/${productId}/variants`)
           .set('Authorization', `Bearer ${contentToken}`)
@@ -550,7 +563,7 @@ describe('Catalog Admin (e2e)', () => {
       });
 
       it('15. 403 for SALES, 401 with no token', async () => {
-        const sku = `KT-RBAC-${uniqueEmail('v').split('@')[0]!.slice(0, 8).toUpperCase()}`;
+        const sku = `KT-RBAC-${slugSeed('v').slice(0, 8).toUpperCase()}`;
         await request(server)
           .post(`/api/admin/products/${productId}/variants`)
           .set('Authorization', `Bearer ${salesToken}`)
@@ -567,13 +580,13 @@ describe('Catalog Admin (e2e)', () => {
       let variantId: string;
 
       beforeAll(async () => {
-        const seed = uniqueEmail('prod-cert').split('@')[0]!;
+        const seed = slugSeed('prod-cert');
         const product = await request(server)
           .post('/api/admin/products')
           .set('Authorization', `Bearer ${contentToken}`)
           .send(baseProductBody(seed))
           .expect(201);
-        const sku = `KT-CERT-${uniqueEmail('v').split('@')[0]!.slice(0, 8).toUpperCase()}`;
+        const sku = `KT-CERT-${slugSeed('v').slice(0, 8).toUpperCase()}`;
         const variant = await request(server)
           .post(`/api/admin/products/${product.body.id}/variants`)
           .set('Authorization', `Bearer ${contentToken}`)
@@ -684,14 +697,14 @@ describe('Catalog Admin (e2e)', () => {
       salesToken = await loginAs('sales@kidtoy.local');
       warehouseToken = await loginAs('warehouse@kidtoy.local');
 
-      const catSeed = uniqueEmail('media-cat').split('@')[0]!;
+      const catSeed = slugSeed('media-cat');
       const cat = await request(server)
         .post('/api/admin/categories')
         .set('Authorization', `Bearer ${contentToken}`)
         .send({ translations: bothLocaleTranslations(catSeed) })
         .expect(201);
 
-      const prodSeed = uniqueEmail('media-prod').split('@')[0]!;
+      const prodSeed = slugSeed('media-prod');
       const product = await request(server)
         .post('/api/admin/products')
         .set('Authorization', `Bearer ${contentToken}`)
@@ -731,7 +744,7 @@ describe('Catalog Admin (e2e)', () => {
       });
 
       it('2. three sequential uploads to the same product get sortOrder 0, 1, 2', async () => {
-        const seed = uniqueEmail('media-order').split('@')[0]!;
+        const seed = slugSeed('media-order');
         const cat = await request(server)
           .post('/api/admin/categories')
           .set('Authorization', `Bearer ${contentToken}`)
@@ -847,7 +860,7 @@ describe('Catalog Admin (e2e)', () => {
       let mediaIds: string[];
 
       beforeAll(async () => {
-        const seed = uniqueEmail('media-reorder').split('@')[0]!;
+        const seed = slugSeed('media-reorder');
         const cat = await request(server)
           .post('/api/admin/categories')
           .set('Authorization', `Bearer ${contentToken}`)
