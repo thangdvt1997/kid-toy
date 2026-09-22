@@ -20,10 +20,10 @@
 - [ ] **CATALOG-03**: Admin can set SKU and barcode per product variant
 - [ ] **CATALOG-04**: Admin can record safety certification info (QCVN "hợp quy" cert number, issuing body, validity date) per SKU/batch
 - [ ] **CATALOG-05**: Admin can set packaging/carton spec per SKU (units per inner box, units per master carton, carton dimensions/weight)
-- [ ] **CATALOG-06**: System resolves retail price for B2C viewers and tier-based wholesale price for approved B2B viewers, based on viewer identity
-- [ ] **CATALOG-07**: Customer can browse and filter catalog by age range, category, brand, origin
-- [ ] **CATALOG-08**: Product page shows a stock-status indicator (in stock / low stock / out of stock)
-- [ ] **CATALOG-09**: Catalog and core site content available in Vietnamese and English
+- [x] **CATALOG-06**: System resolves retail price for B2C viewers and tier-based wholesale price for approved B2B viewers, based on viewer identity
+- [x] **CATALOG-07**: Customer can browse and filter catalog by age range, category, brand, origin
+- [x] **CATALOG-08**: Product page shows a stock-status indicator (in stock / low stock / out of stock)
+- [x] **CATALOG-09**: Catalog and core site content available in Vietnamese and English
 
 ### B2C Retail (B2C)
 
@@ -156,10 +156,10 @@ Populated during roadmap creation (`/gsd:new-project`). See `.planning/ROADMAP.m
 | CATALOG-03 | Phase 1 | Pending |
 | CATALOG-04 | Phase 1 | Pending |
 | CATALOG-05 | Phase 1 | Pending |
-| CATALOG-06 | Phase 1 | Pending |
-| CATALOG-07 | Phase 1 | Pending |
-| CATALOG-08 | Phase 1 | Pending |
-| CATALOG-09 | Phase 1 | Pending |
+| CATALOG-06 | Phase 1 | Complete |
+| CATALOG-07 | Phase 1 | Complete |
+| CATALOG-08 | Phase 1 | Complete |
+| CATALOG-09 | Phase 1 | Complete |
 | INV-01 | Phase 2 | Pending |
 | INV-02 | Phase 2 | Pending |
 | INV-03 | Phase 2 | Pending |
