@@ -13,6 +13,14 @@ import { PriceResolutionService, type Viewer } from './price-resolution.service'
  * Requires a live Postgres pointed at by DATABASE_URL (kidtoy_test) — see
  * apps/api/test/utils/test-app.ts. Not runnable on a machine with no
  * Docker; verified against the live VPS stack by the orchestrator.
+ *
+ * Named `*.integration-spec.ts` (01-09A Task 3), NOT `*.spec.ts`, so the
+ * plain `pnpm test` command's `testRegex` (`.*\.spec\.ts$` in this
+ * package's package.json — note the literal "." immediately before "spec",
+ * which "integration-spec.ts" does not have) never matches this file and
+ * a routine unit-test run never needs a database. Run this specifically —
+ * against `kidtoy_test` only, never dev/prod — via `pnpm test:integration`
+ * (see test/jest-integration.json).
  */
 describe('PriceResolutionService (database-backed)', () => {
   let app: INestApplication;
