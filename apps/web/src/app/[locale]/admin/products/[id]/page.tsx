@@ -84,13 +84,16 @@ export default async function EditProductPage({
   const entriesByVariant = new Map<string, PriceEntryDto[]>();
   if (!priceForbidden) {
     const results = await Promise.all(
-      product.variants.map((variant) =>
-        apiGet<PriceEntryDto[]>(`/api/admin/variants/${variant.id}/prices`, { auth: true }),
+      product.variants.map(
+        async (variant): Promise<[string, PriceEntryDto[]]> => [
+          variant.id,
+          await apiGet<PriceEntryDto[]>(`/api/admin/variants/${variant.id}/prices`, { auth: true }),
+        ],
       ),
     );
-    product.variants.forEach((variant, index) => {
-      entriesByVariant.set(variant.id, results[index]);
-    });
+    for (const [variantId, entries] of results) {
+      entriesByVariant.set(variantId, entries);
+    }
   }
 
   async function deactivate() {

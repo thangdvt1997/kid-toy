@@ -32,8 +32,10 @@ export default function MediaUploader({ productId, media }: { productId: string;
     const target = index + direction;
     if (target < 0 || target >= sorted.length) return;
     const next = [...sorted];
-    const tmp = next[index];
-    next[index] = next[target];
+    // Both indices are bounds-checked above (0 <= index, target < sorted.length),
+    // so these accesses are always defined — non-null assertions are safe here.
+    const tmp = next[index]!;
+    next[index] = next[target]!;
     next[target] = tmp;
     const orderedIds = next.map((m) => m.id);
     startTransition(async () => {
