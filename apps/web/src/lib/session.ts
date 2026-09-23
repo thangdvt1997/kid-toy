@@ -1,30 +1,24 @@
 import "server-only";
 import { cookies } from "next/headers";
+import {
+  ACCESS_MAX_AGE_SECONDS,
+  REFRESH_MAX_AGE_SECONDS,
+  REFRESH_COOKIE,
+  SESSION_COOKIE,
+  sessionCookieAttributes,
+} from "./session-cookies";
 
 /**
  * httpOnly, sameSite lax, secure-in-production session cookies. Plan 09
- * writes these cookies on login/refresh/logout. The `server-only` import
- * above makes any accidental client-component import of this module (or of
- * anything that imports it, e.g. api-client.ts) fail at build time rather
- * than leaking a token-reading code path into the browser bundle (T-01-60).
+ * writes these cookies on login/refresh/logout; Plan 09A's proxy.ts writes
+ * the SAME cookies (same names/attributes, imported from session-cookies.ts)
+ * for the pre-render refresh path, since `cookies()` here is not reachable
+ * from proxy. The `server-only` import above makes any accidental
+ * client-component import of this module (or of anything that imports it,
+ * e.g. api-client.ts) fail at build time rather than leaking a
+ * token-reading code path into the browser bundle (T-01-60).
  */
-export const SESSION_COOKIE = "kt_session";
-export const REFRESH_COOKIE = "kt_refresh";
-
-const ACCESS_MAX_AGE_SECONDS = 15 * 60; // 15 minutes — matches the API's access token TTL
-const REFRESH_MAX_AGE_SECONDS = 30 * 24 * 60 * 60; // 30 days — matches the API's refresh token TTL
-
-function cookieOptions(maxAge: number) {
-  return {
-    httpOnly: true as const,
-    sameSite: "lax" as const,
-    path: "/",
-    // secure-in-production only: this dev environment (and the VPS's
-    // internal Next.js<->Caddy hop) may be plain HTTP.
-    secure: process.env.NODE_ENV === "production",
-    maxAge,
-  };
-}
+export { SESSION_COOKIE, REFRESH_COOKIE };
 
 /** Reads the access token from the httpOnly session cookie. Server-only. */
 export async function getAccessToken(): Promise<string | undefined> {
@@ -48,8 +42,8 @@ export async function setSession(tokens: {
   refreshToken: string;
 }): Promise<void> {
   const store = await cookies();
-  store.set(SESSION_COOKIE, tokens.accessToken, cookieOptions(ACCESS_MAX_AGE_SECONDS));
-  store.set(REFRESH_COOKIE, tokens.refreshToken, cookieOptions(REFRESH_MAX_AGE_SECONDS));
+  store.set(SESSION_COOKIE, tokens.accessToken, sessionCookieAttributes(ACCESS_MAX_AGE_SECONDS));
+  store.set(REFRESH_COOKIE, tokens.refreshToken, sessionCookieAttributes(REFRESH_MAX_AGE_SECONDS));
 }
 
 /** Clears both session cookies. Never throws. */

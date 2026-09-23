@@ -31,7 +31,9 @@ const modulePathIgnorePatterns = ["<rootDir>/.next/"];
 const nodeProject = createJestConfig({
   displayName: "node",
   testEnvironment: "node",
-  testMatch: ["<rootDir>/src/lib/**/*.test.ts"],
+  // `src/proxy.test.ts` (01-09A Task 1) covers proxy.ts itself — it isn't
+  // under src/lib/, but needs the same no-DOM "node" environment.
+  testMatch: ["<rootDir>/src/lib/**/*.test.ts", "<rootDir>/src/proxy.test.ts"],
   moduleNameMapper,
   modulePathIgnorePatterns,
 });

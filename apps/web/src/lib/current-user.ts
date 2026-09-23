@@ -3,52 +3,36 @@ import { cache } from "react";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { getLocale } from "next-intl/server";
-import type { AuthenticatedAccount, AuthTokens, StaffRole } from "@kid-toy/shared-types";
-import { apiGet, apiSend, ApiError } from "./api-client";
-import { clearSession, getAccessToken, getRefreshToken, setSession } from "./session";
-
-async function tryRefresh(): Promise<boolean> {
-  const refreshToken = await getRefreshToken();
-  if (!refreshToken) return false;
-  try {
-    const tokens = await apiSend<AuthTokens>("POST", "/api/auth/refresh", { refreshToken });
-    await setSession(tokens);
-    return true;
-  } catch {
-    return false;
-  }
-}
+import type { AuthenticatedAccount, StaffRole } from "@kid-toy/shared-types";
+import { apiGet } from "./api-client";
+import { getAccessToken } from "./session";
 
 /**
  * Returns the authenticated account for the current request, or `undefined`
  * when anonymous. Never throws. Memoized per request via React `cache()` so
- * several components calling this in one render (e.g. AccountNav +
- * a page's own call) produce exactly one API round trip.
+ * several components calling this in one render (e.g. AccountNav + a page's
+ * own call) produce exactly one API round trip.
  *
- * Transparent refresh: when the access cookie is missing/expired but the
- * refresh cookie is still valid, this silently rotates both cookies and
- * retries once before giving up.
+ * Deliberately does NOT attempt to refresh an expired/missing access token
+ * (01-09A Task 1, fixing a Plan 09 defect): Next.js forbids writing cookies
+ * during Server Component rendering — `cookies().set()`/`.delete()` throw
+ * outside a Server Function or Route Handler — and this function is called
+ * from plain Server Components (AccountNav, account/page.tsx, requireStaff
+ * below). Transparent rotation now happens exclusively in `proxy.ts`, which
+ * runs BEFORE this render starts: it sets the browser-visible cookies on
+ * its own response AND rewrites the in-flight request's cookies so a
+ * successful rotation is visible to this same navigation. If the access
+ * cookie is still missing here, the visitor is anonymous for this render —
+ * the next navigation's proxy pass will either have a fresh cookie (if
+ * rotation just succeeded) or none (the session is genuinely over).
  */
 export const getCurrentUser = cache(async (): Promise<AuthenticatedAccount | undefined> => {
-  let accessToken = await getAccessToken();
-  if (!accessToken) {
-    if (!(await tryRefresh())) return undefined;
-    accessToken = await getAccessToken();
-    if (!accessToken) return undefined;
-  }
+  const accessToken = await getAccessToken();
+  if (!accessToken) return undefined;
 
   try {
     return await apiGet<AuthenticatedAccount>("/api/auth/me", { auth: true });
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 401 && (await tryRefresh())) {
-      try {
-        return await apiGet<AuthenticatedAccount>("/api/auth/me", { auth: true });
-      } catch {
-        await clearSession();
-        return undefined;
-      }
-    }
-    await clearSession();
+  } catch {
     return undefined;
   }
 });
