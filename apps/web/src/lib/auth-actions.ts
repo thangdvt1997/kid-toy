@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { getLocale } from "next-intl/server";
 import type { AuthenticatedAccount, AuthTokens } from "@kid-toy/shared-types";
 import { apiSend, ApiError } from "./api-client";
+import { resolveRedirectTarget } from "./redirect-target";
 import { clearSession, getAccessToken, setSession } from "./session";
 
 export type ActionState = { ok: true } | { ok: false; error: string };
@@ -66,7 +67,16 @@ export async function loginAction(_prevState: ActionState, formData: FormData): 
   }
 
   const locale = await getLocale();
-  const destination = isNonEmptyString(next) ? next : `/${locale}/account`;
+  // `next` is UNTRUSTED even though the login page itself populated the
+  // hidden field from a query param — a submitted form can always carry an
+  // attacker-supplied value regardless of what was rendered. Only an
+  // application-local pathname in the current locale is ever redirected to
+  // (01-09A Task 2, fixing a Plan 09 open-redirect defect); anything else
+  // falls back to /[locale]/account inside resolveRedirectTarget.
+  const destination = resolveRedirectTarget(
+    isNonEmptyString(next) ? next : undefined,
+    locale,
+  );
   redirect(destination);
 }
 
