@@ -3,8 +3,17 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getLocale } from "next-intl/server";
-import type { AdminProductDto, TranslationInput } from "@kid-toy/shared-types";
-import { apiSend, ApiError } from "./api-client";
+import type {
+  AdminProductDto,
+  AdminVariantDto,
+  BusinessAccountSummary,
+  CertificationDto,
+  MediaDto,
+  PriceEntryDto,
+  TranslationInput,
+  VariantStockDto,
+} from "@kid-toy/shared-types";
+import { apiGet, apiSend, ApiError } from "./api-client";
 
 /**
  * Every admin Server Action returns this shape — never a raw thrown error,
@@ -247,4 +256,339 @@ export async function createBrandAction(
   revalidatePath("/vi/admin/products");
   revalidatePath("/en/admin/products");
   return { ok: true };
+}
+
+// ---------------------------------------------------------------------
+// Task 2 — variants, certifications, media, prices/stock, dealer approval
+// (CATALOG-02..06, CATALOG-08, AUTH-03/04)
+// ---------------------------------------------------------------------
+
+interface VariantFields {
+  sku: string;
+  barcode?: string;
+  variantLabel?: string;
+  unitsPerInnerBox?: number;
+  unitsPerMasterCarton?: number;
+  cartonLengthCm?: number;
+  cartonWidthCm?: number;
+  cartonHeightCm?: number;
+  cartonWeightKg?: number;
+}
+
+function numberOrUndefined(formData: FormData, key: string): number | undefined {
+  const raw = formData.get(key);
+  if (raw === null || raw === "") return undefined;
+  const n = Number(raw);
+  return Number.isNaN(n) ? undefined : n;
+}
+
+function parseVariantFields(formData: FormData): VariantFields | null {
+  // SKU is always coerced to uppercase server-side regardless of what the
+  // browser sent — the visual `text-transform: uppercase` on the input in
+  // VariantForm.tsx is cosmetic only, this is the real normalization.
+  const sku = String(formData.get("sku") ?? "").trim().toUpperCase();
+  if (!sku) return null;
+  return {
+    sku,
+    barcode: String(formData.get("barcode") ?? "").trim() || undefined,
+    variantLabel: String(formData.get("variantLabel") ?? "").trim() || undefined,
+    unitsPerInnerBox: numberOrUndefined(formData, "unitsPerInnerBox"),
+    unitsPerMasterCarton: numberOrUndefined(formData, "unitsPerMasterCarton"),
+    cartonLengthCm: numberOrUndefined(formData, "cartonLengthCm"),
+    cartonWidthCm: numberOrUndefined(formData, "cartonWidthCm"),
+    cartonHeightCm: numberOrUndefined(formData, "cartonHeightCm"),
+    cartonWeightKg: numberOrUndefined(formData, "cartonWeightKg"),
+  };
+}
+
+export async function createVariantAction(
+  productId: string,
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const fields = parseVariantFields(formData);
+  if (!fields) return { ok: false, error: "Admin.errUnknown" };
+  try {
+    await apiSend<AdminVariantDto>("POST", `/api/admin/products/${productId}/variants`, fields, {
+      auth: true,
+    });
+  } catch (err) {
+    return { ok: false, error: mapError(err) };
+  }
+  await revalidateCatalogAndAdmin(productId);
+  return { ok: true };
+}
+
+export async function updateVariantAction(
+  productId: string,
+  variantId: string,
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const fields = parseVariantFields(formData);
+  if (!fields) return { ok: false, error: "Admin.errUnknown" };
+  try {
+    await apiSend<AdminVariantDto>("PATCH", `/api/admin/variants/${variantId}`, fields, {
+      auth: true,
+    });
+  } catch (err) {
+    return { ok: false, error: mapError(err) };
+  }
+  await revalidateCatalogAndAdmin(productId);
+  return { ok: true };
+}
+
+function parseCertificationFields(
+  formData: FormData,
+): { certNumber: string; issuingBody: string; validFrom: string; validTo: string; batchLabel?: string } | null {
+  const certNumber = String(formData.get("certNumber") ?? "").trim();
+  const issuingBody = String(formData.get("issuingBody") ?? "").trim();
+  const validFrom = String(formData.get("validFrom") ?? "").trim();
+  const validTo = String(formData.get("validTo") ?? "").trim();
+  if (!certNumber || !issuingBody || !validFrom || !validTo) return null;
+  return {
+    certNumber,
+    issuingBody,
+    validFrom,
+    validTo,
+    batchLabel: String(formData.get("batchLabel") ?? "").trim() || undefined,
+  };
+}
+
+export async function createCertificationAction(
+  productId: string,
+  variantId: string,
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const fields = parseCertificationFields(formData);
+  if (!fields) return { ok: false, error: "Admin.errUnknown" };
+  try {
+    await apiSend<CertificationDto>(
+      "POST",
+      `/api/admin/variants/${variantId}/certifications`,
+      fields,
+      { auth: true },
+    );
+  } catch (err) {
+    return { ok: false, error: mapError(err) };
+  }
+  await revalidateCatalogAndAdmin(productId);
+  return { ok: true };
+}
+
+/** Not `useActionState`-bound — invoked directly from a plain `<form action>` (see VariantForm.tsx's CertificationRow). */
+export async function deleteCertificationAction(productId: string, certId: string): Promise<ActionState> {
+  try {
+    await apiSend<void>("DELETE", `/api/admin/certifications/${certId}`, undefined, { auth: true });
+  } catch (err) {
+    return { ok: false, error: mapError(err) };
+  }
+  await revalidateCatalogAndAdmin(productId);
+  return { ok: true };
+}
+
+/**
+ * `formData` is passed through to `apiSend`'s `formData` option (multipart
+ * passthrough) — never re-encoded as JSON, since it carries the actual
+ * uploaded `File`.
+ */
+export async function uploadMediaAction(
+  productId: string,
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return { ok: false, error: "Admin.errMediaTypeMismatch" };
+  }
+  const type = String(formData.get("type") ?? "");
+  if (type !== "IMAGE" && type !== "VIDEO") {
+    return { ok: false, error: "Admin.errUnknown" };
+  }
+
+  const payload = new FormData();
+  payload.set("type", type);
+  const altTextVi = String(formData.get("altTextVi") ?? "").trim();
+  const altTextEn = String(formData.get("altTextEn") ?? "").trim();
+  if (altTextVi) payload.set("altTextVi", altTextVi);
+  if (altTextEn) payload.set("altTextEn", altTextEn);
+  payload.set("file", file);
+
+  try {
+    await apiSend<MediaDto>("POST", `/api/admin/products/${productId}/media`, undefined, {
+      auth: true,
+      formData: payload,
+    });
+  } catch (err) {
+    // NestJS's ParseFilePipe validation failures (wrong mimetype/oversized)
+    // don't carry a stable string code the way this codebase's own
+    // BadRequestException('CODE') throws do — fall back to
+    // errMediaTypeMismatch specifically for this action rather than the
+    // generic errUnknown.
+    return { ok: false, error: mapError(err, "Admin.errMediaTypeMismatch") };
+  }
+  await revalidateCatalogAndAdmin(productId);
+  return { ok: true };
+}
+
+/** Always submits the FULL recomputed id list — the API rejects a partial/duplicate/foreign set. */
+export async function reorderMediaAction(productId: string, orderedIds: string[]): Promise<ActionState> {
+  try {
+    await apiSend<MediaDto[]>(
+      "PATCH",
+      `/api/admin/products/${productId}/media/order`,
+      { orderedIds },
+      { auth: true },
+    );
+  } catch (err) {
+    return { ok: false, error: mapError(err) };
+  }
+  await revalidateCatalogAndAdmin(productId);
+  return { ok: true };
+}
+
+export async function deleteMediaAction(productId: string, mediaId: string): Promise<ActionState> {
+  try {
+    await apiSend<void>("DELETE", `/api/admin/media/${mediaId}`, undefined, { auth: true });
+  } catch (err) {
+    return { ok: false, error: mapError(err) };
+  }
+  await revalidateCatalogAndAdmin(productId);
+  return { ok: true };
+}
+
+/**
+ * `unitPriceVnd` is read directly from the form field and forwarded
+ * VERBATIM as a string — never `Number(...)`'d (T-01-79). Coercing a
+ * 15-digit VND amount through a JS `number` would silently lose precision.
+ */
+export async function setPriceAction(
+  productId: string,
+  variantId: string,
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const tierId = String(formData.get("tierId") ?? "").trim();
+  const minQty = Number(formData.get("minQty"));
+  const unitPriceVnd = String(formData.get("unitPriceVnd") ?? "").trim();
+  if (!tierId || !unitPriceVnd || Number.isNaN(minQty)) {
+    return { ok: false, error: "Admin.errUnknown" };
+  }
+  try {
+    await apiSend<PriceEntryDto>(
+      "PUT",
+      `/api/admin/variants/${variantId}/prices`,
+      { tierId, minQty, unitPriceVnd },
+      { auth: true },
+    );
+  } catch (err) {
+    return { ok: false, error: mapError(err) };
+  }
+  await revalidateCatalogAndAdmin(productId);
+  return { ok: true };
+}
+
+/**
+ * Not part of the plan's literal `<interfaces>` action list, but required
+ * for the plan's OWN behavior bullet ("deleting the last retail entry
+ * surfaces LAST_RETAIL_PRICE") to be reachable from the UI at all — Rule 2
+ * (missing critical functionality): without a delete action, that
+ * acceptance criterion has no code path to exercise.
+ */
+export async function deletePriceEntryAction(productId: string, entryId: string): Promise<ActionState> {
+  try {
+    await apiSend<void>("DELETE", `/api/admin/price-entries/${entryId}`, undefined, { auth: true });
+  } catch (err) {
+    return { ok: false, error: mapError(err) };
+  }
+  await revalidateCatalogAndAdmin(productId);
+  return { ok: true };
+}
+
+export async function setStockAction(
+  productId: string,
+  variantId: string,
+  _prev: ActionState<VariantStockDto>,
+  formData: FormData,
+): Promise<ActionState<VariantStockDto>> {
+  const quantityOnHand = Number(formData.get("quantityOnHand"));
+  const reorderThreshold = Number(formData.get("reorderThreshold"));
+  if (Number.isNaN(quantityOnHand) || Number.isNaN(reorderThreshold)) {
+    return { ok: false, error: "Admin.errUnknown" };
+  }
+  let result: VariantStockDto;
+  try {
+    result = await apiSend<VariantStockDto>(
+      "PUT",
+      `/api/admin/variants/${variantId}/stock`,
+      { quantityOnHand, reorderThreshold },
+      { auth: true },
+    );
+  } catch (err) {
+    return { ok: false, error: mapError(err) };
+  }
+  await revalidateCatalogAndAdmin(productId);
+  return { ok: true, data: result };
+}
+
+export async function approveBusinessAccountAction(
+  accountId: string,
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const priceTierId = String(formData.get("priceTierId") ?? "").trim();
+  if (!priceTierId) return { ok: false, error: "Admin.errPriceTierRequired" };
+  try {
+    await apiSend<BusinessAccountSummary>(
+      "PATCH",
+      `/api/admin/business-accounts/${accountId}/approval`,
+      { approvalStatus: "APPROVED", priceTierId },
+      { auth: true },
+    );
+  } catch (err) {
+    return { ok: false, error: mapError(err) };
+  }
+  revalidatePath("/vi/admin/business-accounts");
+  revalidatePath("/en/admin/business-accounts");
+  return { ok: true };
+}
+
+export async function rejectBusinessAccountAction(
+  accountId: string,
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const rejectionReason = String(formData.get("rejectionReason") ?? "").trim();
+  if (!rejectionReason) return { ok: false, error: "Admin.errRejectionReasonRequired" };
+  try {
+    await apiSend<BusinessAccountSummary>(
+      "PATCH",
+      `/api/admin/business-accounts/${accountId}/approval`,
+      { approvalStatus: "REJECTED", rejectionReason },
+      { auth: true },
+    );
+  } catch (err) {
+    return { ok: false, error: mapError(err) };
+  }
+  revalidatePath("/vi/admin/business-accounts");
+  revalidatePath("/en/admin/business-accounts");
+  return { ok: true };
+}
+
+/**
+ * Mints a short-lived presigned URL on demand — the raw object key never
+ * reaches this page's HTML (T-01-77). Not `useActionState`-bound; called
+ * directly from ApprovalForm's "View licence" button handler.
+ */
+export async function getLicenceUrlAction(accountId: string): Promise<ActionState<{ url: string }>> {
+  try {
+    const result = await apiGet<{ url: string; expiresInSeconds: number }>(
+      `/api/business-accounts/${accountId}/licence`,
+      { auth: true },
+    );
+    return { ok: true, data: { url: result.url } };
+  } catch (err) {
+    return { ok: false, error: mapError(err) };
+  }
 }
