@@ -10,11 +10,18 @@ See: .planning/PROJECT.md (updated 2026-09-21)
 ## Current Position
 
 Phase: 1 of 7 (Foundation — Auth, Bilingual Catalog & Pricing)
-Plan: 10 of 12 complete in current phase — remaining: 01-10-PLAN.md (staff admin UI), 01-11-PLAN.md (VPS deploy: docker-compose.prod.yml + Caddy/HTTPS)
-Status: In Progress
-Last activity: 2026-09-23 — Plan 09A (auth/session hardening: render-time cookie writes removed, open-redirect on post-login `next` param fixed, proxy `x-pathname` forwarding corrected, DB-backed pricing spec separated into its own `test:integration` command) complete, committed (`261382c`), and fully live-verified on the VPS: typecheck clean, 108 API + 54 web unit tests, 21 integration tests (against `kidtoy_test`), 156 API e2e, and a new 5-case web auth-session e2e suite (run against a real preview of both apps bound to `127.0.0.1` on the VPS, torn down afterward) — all green. One test-assertion bug found and fixed along the way (see memory).
+Plan: 10 of 12 — Tasks 1-2 done (code), Task 3 (blocking human-verification checkpoint) NOT started. Remaining: 01-10 Task 3, then 01-11-PLAN.md (VPS deploy: docker-compose.prod.yml + Caddy/HTTPS)
+Status: In Progress — PAUSED mid-verification at user's request (low on tokens)
+Last activity: 2026-09-23 — Plan 10 Tasks 1-2 (staff admin UI: product/variant/media/price/stock forms, dealer approval screen) executed and committed (`aa9c9ef`, `6779ab0`, `3bce839`). VPS verification in progress when paused:
+  - ✅ typecheck: FAILED first pass (2 real `noUncheckedIndexedAccess` TS errors in admin UI — array index access without bounds-proof), fixed (`e3313eb`), re-verified clean on VPS.
+  - ✅ unit tests: 108 API + 54 web, all green on VPS.
+  - ⏳ lint (`pnpm --filter web lint`): was mid-run on VPS when paused, result NOT yet confirmed either way.
+  - ❌ NOT YET RUN: `pnpm --filter api run test:e2e`, `pnpm --filter web build`, the plan's own automated verify-block checks (anonymous admin redirect, WAREHOUSE 403 from API, grep checks for `Bearer`/`Number(unitPriceVnd)`/`revalidatePath` — executor already confirmed these via static grep, but the plan's literal `<verify><automated>` scripts that actually boot the stack and hit live endpoints have not run).
+  - ❌ Task 3 (human-verification checkpoint) not started at all — this requires the actual user to walk through 6 steps in a browser (see 01-10-PLAN.md's `<how-to-verify>`) and type "approved" or list defects. Nothing can substitute for this.
 
-Progress: [████████░░] 10/12 plans (83%)
+**Resume here:** re-run `pnpm --filter web lint` on VPS, then `pnpm --filter api run test:e2e` and `pnpm --filter web build`, then the plan's automated verify scripts, fixing forward anything that fails — exactly the established pattern. Once all green, set up a 127.0.0.1-bound preview (API + web pointed at the VPS's `kidtoy` dev DB, not `kidtoy_test`) and give the user SSH tunnel instructions to do Task 3's 6-step walkthrough themselves.
+
+Progress: [████████░░] 10/12 plans (83%) — Plan 10 counted as in-progress, not complete, until Task 3 passes.
 
 Every completed plan (01–09) has been verified against the LIVE VPS Docker stack (not just static/mocked tests) — see each `01-0N-SUMMARY.md`'s "Orchestrator" verification notes and .claude/projects/D--Work/memory/project_kid_toy_ecommerce.md for the running list of real bugs this caught (Docker Hub image change, missing @HttpCode decorators, non-unique JWTs, ES2023 class-field/whitelist interaction, unsafe test slug seeds, missing --experimental-vm-modules flag, cross-locale slug navigation).
 
@@ -76,9 +83,9 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: 2026-09-23
-Stopped at: Phase 1 Plan 09A complete and fully live-verified on the VPS (see Current Position). Ready to start Plan 10 (staff admin UI).
-Resume file: `01-10-PLAN.md` — execute, then VPS-verify, then continue to `01-11-PLAN.md` (VPS deploy).
+Stopped at: Plan 10 Tasks 1-2 committed; VPS verification mid-way (typecheck fixed+clean, unit tests green, lint/e2e/build/behavioral-gates and Task 3 human walkthrough NOT yet done). Paused at the user's explicit request (low on tokens) — see Current Position for the exact resume point.
+Resume file: `01-10-PLAN.md` Task 3 — but first finish the VPS verification steps listed under Current Position, then hand Task 3's browser walkthrough to the user, then continue to `01-11-PLAN.md` (VPS deploy).
 
 **Strict rule as of 2026-09-23 (see memory `feedback_deploy_location`):** never run `pnpm`/build/test/typecheck on the laptop — not even for "safe" static checks. Only git and file edits happen locally; everything else (install, typecheck, lint, test, build) runs on the VPS via ephemeral `node:24-bookworm` containers.
 
-**VPS state at handoff:** `/root/test/kid-toy` on `69.197.177.130` is at commit `261382c` (matches GitHub `main`). Data-stack containers (`kid-toy-postgres-1`, `kid-toy-minio-1`, `kid-toy-redis-1`) are healthy, bound to `127.0.0.1` only. No preview/app containers left running. `kidtoy_test` is seeded and current.
+**VPS state at handoff:** `/root/test/kid-toy` on `69.197.177.130` is at commit `e3313eb` (matches GitHub `main`). Data-stack containers (`kid-toy-postgres-1`, `kid-toy-minio-1`, `kid-toy-redis-1`) are healthy, bound to `127.0.0.1` only. No preview/app containers left running. `kidtoy_test` is seeded and current (last seeded during Plan 09A's web e2e verification).
