@@ -119,7 +119,13 @@ describe("auth session (cookie refresh + login redirects)", () => {
     expect(res.status).toBe(200);
     const body = await res.text();
     expect(body).toContain(seedEmail);
-    expect(res.headers.get("set-cookie")).toBeNull();
+    // Not toBeNull() on the whole header: next-intl legitimately sets its
+    // own NEXT_LOCALE cookie on render, unrelated to auth. The actual
+    // "no cookie churn" claim is specifically about the SESSION cookies —
+    // a valid, non-expired session must not be rewritten on every render.
+    const setCookie = res.headers.get("set-cookie") ?? "";
+    expect(setCookie).not.toContain("kt_session=");
+    expect(setCookie).not.toContain("kt_refresh=");
   });
 
   it("an expired access cookie with a valid refresh cookie yields a new cookie pair and an authenticated page on the SAME navigation", async () => {
